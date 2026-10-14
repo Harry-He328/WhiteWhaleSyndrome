@@ -1,0 +1,37 @@
+# 换行符统一：仓库里一律存 LF，检出时按平台转换。
+# 不加这一条，Windows 和 Mac 之间协作时几乎每个文本文件都会显示成"整份改动"。
+* text=auto
+
+# Unity 的文本资产：明确按文本走，diff 才看得懂。
+# 这些文件是 YAML，能用肉眼看出"改了哪个字段"。
+*.unity       text
+*.prefab      text
+*.mat         text
+*.meta        text
+*.controller  text
+*.anim        text
+*.overrideController text
+
+# 二进制资产：绝不转换换行符，转换会把文件弄坏。
+*.fbx     binary
+*.obj     binary
+*.blend   binary
+*.dae     binary
+*.3ds     binary
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.psd     binary
+*.tga     binary
+*.tif     binary
+*.exr     binary
+*.hdr     binary
+*.wav     binary
+*.mp3     binary
+*.ogg     binary
+*.aiff    binary
+*.ttf     binary
+*.otf     binary
+*.dll     binary
+*.so      binary
+*.bundle  binary

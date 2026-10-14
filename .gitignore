@@ -1,0 +1,66 @@
+# ===============================================================
+# Unity 工程 .gitignore
+#
+# 入库的只有三样：Assets / Packages / ProjectSettings。
+# 其余全部是可重建的缓存，或者 Unity 每次打开都会重写的自动生成文件。
+#
+# 最重要的一条在文件末尾：不要忽略 *.meta。
+# ===============================================================
+
+# ---- Unity 缓存与中间产物（体积大、可重建）----
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# ---- Unity 自动生成的工程文件（每次打开都重写，入库只会天天冲突）----
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# ---- IDE ----
+.vs/
+.idea/
+.vscode/
+*.vsconfig
+*.tmp
+
+# ---- Unity 崩溃与调试输出 ----
+sysinfo.txt
+*.stackdump
+crashlytics-build.properties
+
+# ---- Addressables 打出来的二进制包 ----
+/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
+
+# ---- 本工程专有：手动的场景备份，不是工程内容 ----
+/_backup_before_maplayer/
+
+# ---- 开发工具的本地配置（每台机器不一样，不该互相覆盖）----
+/.claude/settings.local.json
+
+# ---- 系统垃圾 ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===============================================================
+# 千万不要忽略 *.meta。
+# Unity 靠 .meta 里的 GUID 维持资源之间的引用关系，少一个 .meta，
+# 对应资源在别人机器上就变成"丢失引用"，场景打开是一片空白。
+# ===============================================================
