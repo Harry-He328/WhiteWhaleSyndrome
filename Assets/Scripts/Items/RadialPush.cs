@@ -37,6 +37,6 @@ public class RadialPush : MonoBehaviour
             return;
         }
 
-        target.AddForce(direction.normalized * pushImpulse, ForceMode.Impulse);
+        target.AddForce(direction.normalized * pushImpulse, ForceMode.Acceleration);
     }
 }

@@ -55,7 +55,7 @@ public sealed class OceanTableDisplay : MonoBehaviour
         }
         foreach (GameObject root in scene.GetRootGameObjects())
         {
-            if (root.name == "OceanWorld")
+            if (root.GetComponentInChildren<OceanSurface>(true) != null)
             {
                 Transform fixtures = root.transform.Find("DisplayValidation");
                 if (fixtures != null) fixtures.gameObject.SetActive(showValidationFixtures);

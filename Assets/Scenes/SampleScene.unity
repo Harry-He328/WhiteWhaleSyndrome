@@ -4921,7 +4921,7 @@ Transform:
   m_GameObject: {fileID: 968178982}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.905, z: 0}
+  m_LocalPosition: {x: 0, y: 0.64, z: 0}
   m_LocalScale: {x: 3.44, y: 0.05, z: 2.24}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6112,6 +6112,7 @@ MonoBehaviour:
   displayScale: 0.05
   oceanCenter: {x: 0, y: 0}
   followPlayerShip: 1
+  showValidationFixtures: 0
 --- !u!4 &1100551191
 Transform:
   m_ObjectHideFlags: 0
@@ -10736,7 +10737,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3080213845194257077, guid: d6d85189631c4b94caecd792477ea346, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6681915967480304554, guid: d6d85189631c4b94caecd792477ea346, type: 3}
       propertyPath: m_Size.x
