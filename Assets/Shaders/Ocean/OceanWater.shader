@@ -91,21 +91,6 @@ Shader "WhiteWhale/Ocean Water"
                 half breakup = Noise(p * 0.7 + float2(t * 0.06, -t * 0.04));
                 half foam = smoothstep(0.8h, 0.98h, height) * smoothstep(0.65h, 0.88h, breakup) * _FoamAmount;
                 albedo = lerp(albedo, _FoamColor.rgb, foam);
-                // Fixed visual prototype; matches OceanSurface's (22,8), radius 18 bowl.
-                float2 vortex = (p - float2(22,8)) / 18.0;
-                float radius = length(vortex);
-                half vortexMask = 1.0h - smoothstep(0.72h, 1.0h, radius);
-                if (radius < 1.0)
-                {
-                    float angle = atan2(vortex.y, vortex.x);
-                    float spiralPhase = angle * 3.0 + log(max(radius, 0.035)) * 10.0 + t * 1.6;
-                    half spiral = pow(saturate(sin(spiralPhase) * 0.5 + 0.5), 12.0);
-                    half broken = 0.5h + 0.5h * Noise(vortex * 18.0 + t * 0.12);
-                    half arms = spiral * broken * smoothstep(0.07h, 0.22h, radius) * vortexMask;
-                    half core = 1.0h - smoothstep(0.03h, 0.32h, radius);
-                    albedo = lerp(albedo, half3(0.006h, 0.035h, 0.065h), vortexMask * 0.7h + core * 0.28h);
-                    // Temporarily disable spiral markings to inspect the funnel geometry alone.
-                }
                 InputData data = (InputData)0;
                 data.positionWS = i.positionWS;
                 data.positionCS = i.positionCS;

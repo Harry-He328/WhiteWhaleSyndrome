@@ -1,0 +1,20 @@
+PASS scene starts waiting outside arrival radius
+PASS one ocean simulation ship
+PASS three island monkeys
+PASS two tabletop cannons bound to ocean ship
+PASS normal sailing triggers same-entity monkey transfer
+PASS two monkeys remain on island
+PASS battle begins once in same flow advance
+PASS battle victory completes event
+PASS restart restores monkey and clears battle
+PASS restarted event enters battle once
+PASS battle defeat selects failure outlet
+PASS cancellation rolls back event-owned changes
+PASS editable spawn/delay graph validates
+PASS spawn creates item at bound room point and waits
+PASS delay preserves running state
+PASS delay advances at configured duration
+PASS spawned object deactivates immediately on reset
+PASS cancel clears pending execution
+PASS editing asset does not mutate in-flight graph snapshot
+PASS no runtime errors: 

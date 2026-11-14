@@ -1,0 +1,24 @@
+PASS saved scene attaches full UI panel without manual repair
+PASS tool scene has no ocean or ship simulation
+PASS inspector input updates node data and dirty state
+PASS UI save persists edited parameter and clears dirty state
+PASS parameter change can be undone
+PASS parameter change can be redone
+PASS saved parameter restores through same portable file format
+PASS header pointer drag moves node in graph coordinates
+PASS node drag records one reversible edit
+PASS palette pointer drag drops a new node on canvas
+PASS port drag connects nodes and replaces previous output
+PASS connection can be undone
+PASS connection can be redone
+PASS Delete removes selected node and attached connections
+PASS deletion can be undone
+PASS middle-button drag pans canvas
+PASS wheel input zooms canvas
+PASS simulation toolbar button starts runner
+PASS pause and single-step select a pending wait node across event call
+PASS simulation opens referenced event graph and highlights arrival wait
+PASS arrival simulation button advances flow
+PASS dialogue button advances transfer and independent battle
+PASS victory button returns event result and completes main flow
+PASS stop button returns to editable document

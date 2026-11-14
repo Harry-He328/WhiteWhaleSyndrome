@@ -1,0 +1,258 @@
+{
+    "version": 1,
+    "graph": {
+        "version": 1,
+        "id": "cc6acbe814b94e688edaf3b21cd5f49d",
+        "title": "猴子岛 · 初次相遇",
+        "kind": "event",
+        "entry": "0ef75d478f9640cb9248c8e0938c423c",
+        "nodes": [
+            {
+                "id": "monkey_wait_travel",
+                "type": "wait_travel",
+                "title": "累计航行后遇岛",
+                "x": -600.0,
+                "y": 0.0,
+                "parameters": {
+                    "actor": "scene:a119bc0c862d4dad8d74242010e8b370",
+                    "travelDistance": 30.0,
+                    "planarDistance": true
+                },
+                "published": [
+                    {
+                        "key": "travelDistance",
+                        "label": "遇岛前累计航行（米）"
+                    }
+                ]
+            },
+            {
+                "id": "monkey_spawn_island",
+                "type": "spawn",
+                "title": "船前出现猴子岛",
+                "x": -300.0,
+                "y": 0.0,
+                "parameters": {
+                    "prefabGuid": "2c38fb6c77ee4231898fa6e0e84c4862",
+                    "destination": "scene:b13026a89e104d1fbaf4e95e531c529d",
+                    "orientation": "scene:a119bc0c862d4dad8d74242010e8b370",
+                    "sourcePoint": "a2b6d0eb03c74d388fb05f1e36e75563",
+                    "placement": "projected",
+                    "placementOffset": {
+                        "x": 0,
+                        "y": 0,
+                        "z": 50.0
+                    },
+                    "parentToTargetRoot": true
+                },
+                "published": [
+                    {
+                        "key": "placementOffset",
+                        "label": "岛屿出现偏移（米）"
+                    }
+                ]
+            },
+            {
+                "id": "monkey_spawn_actor_01",
+                "type": "spawn",
+                "title": "岸边的猴子",
+                "x": 0.0,
+                "y": 0.0,
+                "parameters": {
+                    "prefabInput": "island-character",
+                    "destination": "spawn:monkey_spawn_island",
+                    "destinationPoint": "078881a392e043a7b755ad193ab5dc95",
+                    "placement": "anchor",
+                    "spawnScale": 4,
+                    "parentToTargetRoot": true
+                }
+            },
+            {
+                "id": "monkey_spawn_actor_02",
+                "type": "spawn",
+                "title": "岛中的猴子",
+                "x": 300.0,
+                "y": 0.0,
+                "parameters": {
+                    "prefabInput": "island-character",
+                    "destination": "spawn:monkey_spawn_island",
+                    "destinationPoint": "a99ec756c6b04ea493956228bc553a83",
+                    "placement": "anchor",
+                    "spawnScale": 4,
+                    "parentToTargetRoot": true
+                }
+            },
+            {
+                "id": "monkey_spawn_actor_03",
+                "type": "spawn",
+                "title": "岩石旁的猴子",
+                "x": 600.0,
+                "y": 0.0,
+                "parameters": {
+                    "prefabInput": "island-character",
+                    "destination": "spawn:monkey_spawn_island",
+                    "destinationPoint": "ca227fece1394ae597c8b5aeeb348703",
+                    "placement": "anchor",
+                    "spawnScale": 4,
+                    "parentToTargetRoot": true
+                }
+            },
+            {
+                "id": "0ef75d478f9640cb9248c8e0938c423c",
+                "type": "start",
+                "title": "事件开始",
+                "x": -900.0,
+                "y": 0.0,
+                "parameters": {}
+            },
+            {
+                "id": "75bf62a273b2436eb7dc26d2b4a82fc4",
+                "type": "wait_region",
+                "title": "靠近猴子岛",
+                "x": 900.0,
+                "y": 0.0,
+                "parameters": {
+                    "actor": "scene:a119bc0c862d4dad8d74242010e8b370",
+                    "target": "spawn:monkey_spawn_island",
+                    "destinationPoint": "4f208dcaf7f541b7bd1319976c22110f"
+                }
+            },
+            {
+                "id": "af58a61bc88b4410a7e620124223d10c",
+                "type": "wait_confirmation",
+                "title": "岛上三只猴子",
+                "x": 1200.0,
+                "y": 0.0,
+                "parameters": {
+                    "note": "岛上的三只猴子正望着这边。"
+                }
+            },
+            {
+                "id": "7853179264c64e2d916deb964e5efebf",
+                "type": "run_action",
+                "title": "岸边的猴子进入房间",
+                "x": 1200.0,
+                "y": 220.0,
+                "parameters": {
+                    "actionGuid": "4bb3384fece64fb992cf7ce3634bd6f8",
+                    "item": "spawn:monkey_spawn_actor_01",
+                    "destination": "scene:57adb5325dcc475ca0d14e24ab6ff700"
+                }
+            },
+            {
+                "id": "809e4f752f0e4a438567d7eee94b2388",
+                "type": "run_action",
+                "title": "进行猴子岛海战",
+                "x": 900.0,
+                "y": 450.0,
+                "parameters": {
+                    "actionGuid": "edda45e9c5f543b4a97c418df7fd8886"
+                }
+            },
+            {
+                "id": "6815ee1131994f14b18d67a0a7ea5a43",
+                "type": "end",
+                "title": "事件完成",
+                "x": 900.0,
+                "y": 690.0,
+                "parameters": {
+                    "success": true
+                }
+            },
+            {
+                "id": "735c754bc5af48c782f3eb2ea7fc0714",
+                "type": "end",
+                "title": "事件失败",
+                "x": 1200.0,
+                "y": 690.0,
+                "parameters": {
+                    "success": false
+                }
+            }
+        ],
+        "edges": [
+            {
+                "id": "monkey_travel_to_spawn",
+                "from": "monkey_wait_travel",
+                "port": "next",
+                "to": "monkey_spawn_island"
+            },
+            {
+                "id": "monkey_spawn_to_near",
+                "from": "monkey_spawn_island",
+                "port": "next",
+                "to": "monkey_spawn_actor_01"
+            },
+            {
+                "id": "c8e655f08a4344b8b553dca26d53760b",
+                "from": "0ef75d478f9640cb9248c8e0938c423c",
+                "port": "next",
+                "to": "monkey_wait_travel"
+            },
+            {
+                "id": "d14559e1b29b4b23b1cc4e5b626faaf9",
+                "from": "75bf62a273b2436eb7dc26d2b4a82fc4",
+                "port": "next",
+                "to": "af58a61bc88b4410a7e620124223d10c"
+            },
+            {
+                "id": "cf5eb615f03c4a8c9f9d26b085d43282",
+                "from": "af58a61bc88b4410a7e620124223d10c",
+                "port": "next",
+                "to": "7853179264c64e2d916deb964e5efebf"
+            },
+            {
+                "id": "d5327d4edf4e46aa8b85395fc4b334af",
+                "from": "7853179264c64e2d916deb964e5efebf",
+                "port": "success",
+                "to": "809e4f752f0e4a438567d7eee94b2388"
+            },
+            {
+                "id": "f334ea0c5d0f4c459c378d041706cd3b",
+                "from": "809e4f752f0e4a438567d7eee94b2388",
+                "port": "success",
+                "to": "6815ee1131994f14b18d67a0a7ea5a43"
+            },
+            {
+                "id": "b359c79500294668aeeaa9b12f9a138f",
+                "from": "809e4f752f0e4a438567d7eee94b2388",
+                "port": "failure",
+                "to": "735c754bc5af48c782f3eb2ea7fc0714"
+            },
+            {
+                "id": "monkey_spawn_edge_01",
+                "from": "monkey_spawn_actor_01",
+                "port": "next",
+                "to": "monkey_spawn_actor_02"
+            },
+            {
+                "id": "monkey_spawn_edge_02",
+                "from": "monkey_spawn_actor_02",
+                "port": "next",
+                "to": "monkey_spawn_actor_03"
+            },
+            {
+                "id": "monkey_spawn_edge_03",
+                "from": "monkey_spawn_actor_03",
+                "port": "next",
+                "to": "75bf62a273b2436eb7dc26d2b4a82fc4"
+            },
+            {
+                "id": "transfer-failure",
+                "from": "7853179264c64e2d916deb964e5efebf",
+                "port": "failure",
+                "to": "735c754bc5af48c782f3eb2ea7fc0714"
+            }
+        ],
+        "panX": 641.1482543945312,
+        "panY": 39.653900146484375,
+        "zoom": 0.6845634579658508,
+        "prefabInputs": [
+            {
+                "id": "island-character",
+                "label": "岛上角色",
+                "guid": "582688088962313409941ed86a59db6e",
+                "published": false
+            }
+        ]
+    }
+}

@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "id": "3ac3ece7a24948239b260881f07c7b4e",
+    "title": "桌面挑战 · 第一章",
+    "kind": "main",
+    "entry": "5e35e4da745a40db932af71bcc84093b",
+    "nodes": [
+        {
+            "id": "5e35e4da745a40db932af71bcc84093b",
+            "type": "start",
+            "title": "开始桌面挑战",
+            "x": 0.0,
+            "y": 0.0,
+            "parameters": {
+                "actor": "",
+                "target": "",
+                "item": "",
+                "destination": "",
+                "destinationPoint": "",
+                "sourcePoint": "",
+                "orientation": "",
+                "prefabGuid": "",
+                "prefabInput": "",
+                "placement": "anchor",
+                "placementOffset": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "spawnScale": 1.0,
+                "parentToTargetRoot": false,
+                "planarDistance": false,
+                "radius": 1.0,
+                "travelDistance": 1.0,
+                "seconds": 1.0,
+                "stage": "",
+                "flag": "",
+                "eventFile": "",
+                "signal": "",
+                "note": "",
+                "actionGuid": "",
+                "value": true,
+                "success": true
+            },
+            "published": []
+        },
+        {
+            "id": "32694af777f94d00819830d9218be4af",
+            "type": "call_event",
+            "title": "执行猴子岛事件",
+            "x": 300.0,
+            "y": 230.0,
+            "parameters": {
+                "actor": "",
+                "target": "",
+                "item": "",
+                "destination": "",
+                "destinationPoint": "",
+                "sourcePoint": "",
+                "orientation": "",
+                "prefabGuid": "",
+                "prefabInput": "",
+                "placement": "anchor",
+                "placementOffset": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "spawnScale": 1.0,
+                "parentToTargetRoot": false,
+                "planarDistance": false,
+                "radius": 1.0,
+                "travelDistance": 1.0,
+                "seconds": 1.0,
+                "stage": "",
+                "flag": "",
+                "eventFile": "monkey_island.event",
+                "signal": "",
+                "note": "",
+                "actionGuid": "",
+                "value": true,
+                "success": true
+            },
+            "published": []
+        },
+        {
+            "id": "66a39b59c5c148b799b76a1077f69e3b",
+            "type": "end",
+            "title": "本章完成",
+            "x": 749.868408203125,
+            "y": 3.713348388671875,
+            "parameters": {
+                "actor": "",
+                "target": "",
+                "item": "",
+                "destination": "",
+                "destinationPoint": "",
+                "sourcePoint": "",
+                "orientation": "",
+                "prefabGuid": "",
+                "prefabInput": "",
+                "placement": "anchor",
+                "placementOffset": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "spawnScale": 1.0,
+                "parentToTargetRoot": false,
+                "planarDistance": false,
+                "radius": 1.0,
+                "travelDistance": 1.0,
+                "seconds": 1.0,
+                "stage": "",
+                "flag": "",
+                "eventFile": "",
+                "signal": "",
+                "note": "",
+                "actionGuid": "",
+                "value": true,
+                "success": true
+            },
+            "published": []
+        },
+        {
+            "id": "0191bae9975e443ebc9bd2f5f0a102b5",
+            "type": "end",
+            "title": "本次挑战失败",
+            "x": 600.0,
+            "y": 470.0,
+            "parameters": {
+                "actor": "",
+                "target": "",
+                "item": "",
+                "destination": "",
+                "destinationPoint": "",
+                "sourcePoint": "",
+                "orientation": "",
+                "prefabGuid": "",
+                "prefabInput": "",
+                "placement": "anchor",
+                "placementOffset": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "spawnScale": 1.0,
+                "parentToTargetRoot": false,
+                "planarDistance": false,
+                "radius": 1.0,
+                "travelDistance": 1.0,
+                "seconds": 1.0,
+                "stage": "",
+                "flag": "",
+                "eventFile": "",
+                "signal": "",
+                "note": "",
+                "actionGuid": "",
+                "value": true,
+                "success": false
+            },
+            "published": []
+        }
+    ],
+    "edges": [
+        {
+            "id": "a853c77b3487486fb1f27d63b04dbdac",
+            "from": "5e35e4da745a40db932af71bcc84093b",
+            "port": "next",
+            "to": "32694af777f94d00819830d9218be4af"
+        },
+        {
+            "id": "527e1ecc31884ed5a45ea538ea0cd2db",
+            "from": "32694af777f94d00819830d9218be4af",
+            "port": "success",
+            "to": "66a39b59c5c148b799b76a1077f69e3b"
+        },
+        {
+            "id": "0d1043b1798a4a9f8a1a0b493b2163e0",
+            "from": "32694af777f94d00819830d9218be4af",
+            "port": "failure",
+            "to": "0191bae9975e443ebc9bd2f5f0a102b5"
+        }
+    ],
+    "prefabInputs": [],
+    "panX": 153.8721466064453,
+    "panY": -895.7610473632813,
+    "zoom": 1.7000000476837159
+}

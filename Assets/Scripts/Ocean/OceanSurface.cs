@@ -22,11 +22,6 @@ public sealed class OceanSurface : MonoBehaviour
     private static readonly float[] LengthRatios = { 1f, 0.73f, 0.49f, 0.34f, 0.23f };
     private static readonly float[] AmplitudeRatios = { 1f, 0.52f, 0.27f, 0.12f, 0.055f };
     private float preparedTime = float.NaN;
-    // Temporary visual experiment. Keep center/radius in sync with OceanWater.shader.
-    private static readonly Vector2 WhirlpoolCenter = new Vector2(22f, 8f);
-    private const float WhirlpoolRadius = 18f;
-    private const float WhirlpoolDepth = 5.5f;
-
     private Mesh mesh;
     private Vector3[] vertices;
     private Vector3[] normals;
@@ -125,30 +120,6 @@ public sealed class OceanSurface : MonoBehaviour
             float phase = k * Vector2.Dot(dir, point) + wavePhases[i];
             height += a * Mathf.Sin(phase);
             slope += dir * (a * k * Mathf.Cos(phase));
-        }
-        Vector2 delta = point - WhirlpoolCenter;
-        float r2 = delta.sqrMagnitude / (WhirlpoolRadius * WhirlpoolRadius);
-        if (r2 < 1f)
-        {
-            float bowl = 1f - r2;
-            float mask = bowl * bowl;
-            Vector2 maskSlope = delta * (-4f * bowl / (WhirlpoolRadius * WhirlpoolRadius));
-            // Suppress ordinary waves near the center, with a smooth rim and analytic normals.
-            float baseHeight = height;
-            slope = slope * (1f - 0.9f * mask) - maskSlope * (0.9f * baseHeight + WhirlpoolDepth);
-            height = baseHeight * (1f - 0.9f * mask) - WhirlpoolDepth * mask;
-            // Small helical ridges make the funnel itself twist rather than relying on foam alone.
-            if (r2 > 0.0001f)
-            {
-                float phase = Mathf.Atan2(delta.y, delta.x) * 3f + Mathf.Log(r2) * 5f + time * 1.6f;
-                float envelope = r2 * mask;
-                Vector2 radialGradient = delta * (2f / (WhirlpoolRadius * WhirlpoolRadius));
-                Vector2 phaseGradient = new Vector2(-delta.y, delta.x) * (3f / delta.sqrMagnitude)
-                    + radialGradient * (5f / r2);
-                height += 0.9f * envelope * Mathf.Sin(phase);
-                slope += 0.9f * ((radialGradient * mask + maskSlope * r2) * Mathf.Sin(phase)
-                    + envelope * Mathf.Cos(phase) * phaseGradient);
-            }
         }
         return height;
     }

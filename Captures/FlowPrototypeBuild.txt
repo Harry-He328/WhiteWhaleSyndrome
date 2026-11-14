@@ -1,0 +1,4 @@
+PASS: scene generated; graph, bindings and runtime checks passed.
+Island bounds: Center: (1000.00, -0.70, 47.00), Extents: (4.20, 6.10, 4.20)
+Scene: Assets/Scenes/TabletopFlowPrototype.unity
+Graph: Assets/Settings/Flow/MonkeyIsland.asset

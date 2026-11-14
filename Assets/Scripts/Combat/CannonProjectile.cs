@@ -17,7 +17,6 @@ public class CannonProjectile : MonoBehaviour
     private float expiresAt;
 
     public Rigidbody Owner => owner;
-    public string TabletopTag => tabletopTag;
 
     private void Awake()
     {

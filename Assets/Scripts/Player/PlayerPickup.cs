@@ -23,6 +23,7 @@ public class PlayerPickup : MonoBehaviour
     private float heldRadius;
     private ItemHighlight highlightedItem;
     private PlayerHelmInput helmInput;
+    private IItemTargetSource highlightedSource;
 
     public Rigidbody HeldBody => heldBody;
     public Item HeldItem => heldBody != null ? heldBody.GetComponent<Item>() : null;
@@ -149,13 +150,16 @@ public class PlayerPickup : MonoBehaviour
 
     private void LateUpdate()
     {
+        ItemUseTarget target = default;
+        bool hasUseTarget = false;
         if (heldBody != null && viewCamera != null)
         {
             MoveHeldItem();
+            hasUseTarget = TryGetUseTarget(out target);
         }
 
-        UpdatePlacementPreview();
-        UpdateTargetHighlight();
+        UpdatePlacementPreview(hasUseTarget, target);
+        UpdateTargetHighlight(hasUseTarget, target);
     }
 
     private bool TryGetPlacementTarget(out RaycastHit hit)
@@ -176,28 +180,26 @@ public class PlayerPickup : MonoBehaviour
             interactionMask, QueryTriggerInteraction.Ignore);
     }
 
-    private void UpdateTargetHighlight()
+    private void UpdateTargetHighlight(bool hasUseTarget, ItemUseTarget useTarget)
     {
-        Item target = null;
-        float distance = heldBody == null ? reach : placementReach;
-        if (TryGetTarget(distance, out RaycastHit hit))
+        if (heldBody != null)
         {
-            if (heldBody == null)
+            if (hasUseTarget && ItemInteraction.CanInteract(this, HeldItem, useTarget))
             {
-                if (CanPickUp(hit.rigidbody))
-                {
-                    target = hit.rigidbody.GetComponent<Item>();
-                }
+                SetHighlightedItem(useTarget.Source == null ? useTarget.Item : null);
+                SetSourceHighlight(useTarget.Source, useTarget.Item);
             }
             else
             {
-                Item candidate = hit.collider.GetComponentInParent<Item>();
-                if (ItemInteraction.CanInteract(this, HeldItem, candidate))
-                {
-                    target = candidate;
-                }
+                SetHighlightedItem(null);
+                SetSourceHighlight(null, null);
             }
+            return;
         }
+        SetSourceHighlight(null, null);
+        Item target = null;
+        if (TryGetTarget(reach, out RaycastHit hit) && CanPickUp(hit.rigidbody))
+            target = hit.rigidbody.GetComponent<Item>();
 
         SetHighlightedItem(target);
     }
@@ -222,36 +224,67 @@ public class PlayerPickup : MonoBehaviour
         }
     }
 
-    private void UpdatePlacementPreview()
+    private void SetSourceHighlight(IItemTargetSource source, Item item)
+    {
+        if (!ReferenceEquals(source, highlightedSource)) highlightedSource?.SetHighlighted(null);
+        highlightedSource = source;
+        highlightedSource?.SetHighlighted(item);
+    }
+
+    public bool TryGetUseTarget(out ItemUseTarget target)
+    {
+        target = default;
+        if (viewCamera == null) return false;
+        Ray ray = viewCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+        float distance = placementReach;
+        bool found = TryGetPlacementTarget(out RaycastHit hit);
+        if (found)
+        {
+            distance = hit.distance;
+            target = new ItemUseTarget(hit.collider.GetComponentInParent<Item>(), hit.point, hit.normal);
+        }
+        foreach (var component in GetComponents<MonoBehaviour>())
+        {
+            if (!component.isActiveAndEnabled || !(component is IItemTargetSource source) ||
+                !source.TryGetTarget(ray, distance, out ItemUseTarget candidate)) continue;
+            if (candidate.Surface != null && !ItemInteraction.CanInteract(this, HeldItem, candidate)) continue;
+            target = candidate;
+            distance = Vector3.Distance(ray.origin, candidate.Point);
+            found = true;
+        }
+        return found;
+    }
+
+    private void UpdatePlacementPreview(bool hasUseTarget, ItemUseTarget hit)
     {
         if (placementPreview == null)
         {
             return;
         }
 
-        if (heldBody == null || !TryGetPlacementTarget(out RaycastHit hit))
+        if (!hasUseTarget)
         {
             placementPreview.gameObject.SetActive(false);
             return;
         }
 
         // 小标记只显示表面落点，不参与物理或物件交互。
-        placementPreview.position = hit.point + hit.normal * 0.02f;
+        placementPreview.position = hit.Point + hit.Normal * 0.02f;
         placementPreview.gameObject.SetActive(true);
     }
 
-    private void PlaceHeldItem()
+    public void PlaceHeldItem()
     {
+        if (heldBody == null) return;
         // 按 E 时重新检测；没有目标就沿用原来的就地松手。
-        if (TryGetPlacementTarget(out RaycastHit hit))
+        if (TryGetUseTarget(out ItemUseTarget hit))
         {
-            Item target = hit.collider.GetComponentInParent<Item>();
-            if (ItemInteraction.TryInteract(this, HeldItem, target))
+            if (ItemInteraction.TryInteract(this, HeldItem, hit))
             {
                 return;
             }
 
-            heldBody.position = hit.point + hit.normal * heldRadius;
+            heldBody.position = hit.Point + hit.Normal * heldRadius;
         }
 
         Drop();
@@ -277,6 +310,7 @@ public class PlayerPickup : MonoBehaviour
 
     public void Drop()
     {
+        SetSourceHighlight(null, null);
         SetHighlightedItem(null);
         for (int i = 0; i < heldColliders.Count; i++)
         {

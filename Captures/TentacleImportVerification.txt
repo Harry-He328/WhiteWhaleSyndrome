@@ -1,0 +1,6 @@
+PASS
+Generic rig; 8 bones; two clips sampled successfully.
+Tentacle_Idle_Sway: 3.000s; loop=True
+Tentacle_Slam: 2.542s; loop=False
+Prefab: Assets/Art/Tentacle/Tentacle.prefab
+Animator: default Idle Sway; Slam trigger; auto return to idle.

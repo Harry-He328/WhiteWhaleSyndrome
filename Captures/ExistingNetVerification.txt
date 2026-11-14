@@ -1,0 +1,15 @@
+PASS only the four original scene nets exist
+PASS original net scale, rigidbody mass and collider retained
+PASS sprite replaces original mesh appearance on all existing nets
+PASS original capture labels retained
+PASS existing net still captures existing monkey
+PASS existing net remains pickable
+PASS shared ray selects 敌船 in original Ocean scene
+PASS existing net flies to selected ship
+PASS original net slows enemy on arrival
+PASS existing net remains pickable
+PASS shared ray selects 玩家船 in original Ocean scene
+PASS existing net flies to selected ship
+PASS original net slows player on arrival
+PASS player full-sail speed is halved to 3.5
+PASS

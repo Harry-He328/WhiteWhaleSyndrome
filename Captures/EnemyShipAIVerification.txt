@@ -1,0 +1,13 @@
+PASS preparation and approach do not fire out of range
+PASS net multiplier halves actual enemy pursuit speed
+PASS clearing slow restores enemy movement speed
+PASS enemy stops at range; disabled auto-fire permits movement and turning only
+PASS broadside alignment fires installed cannon
+PASS AI-fired physical cannonball damages player
+PASS player leaving range interrupts waiting and resumes pursuit
+PASS battle defeat cancels active AI sequence
+PASS stopped AI leaves no movement running
+PASS retry leaves exactly one AI
+PASS retry starts one fresh preparation sequence
+PASS enemy death cancels AI and reports victory
+PASS

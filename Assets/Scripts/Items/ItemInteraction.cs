@@ -3,19 +3,26 @@
 /// </summary>
 public static class ItemInteraction
 {
-    public static bool CanInteract(PlayerPickup pickup, Item heldItem, Item target)
+    public static bool CanInteract(PlayerPickup pickup, Item heldItem, ItemUseTarget target)
     {
-        if (heldItem == null || target == null || heldItem == target)
-        {
-            return false;
-        }
+        if (heldItem == null || heldItem == target.Item) return false;
+        foreach (var component in heldItem.GetComponents<UnityEngine.MonoBehaviour>())
+            if (component.isActiveAndEnabled && component is IItemUseRule rule && rule.CanUse(pickup, target)) return true;
+        return target.Item != null && CaptureAnimalInteraction.CanInteract(pickup, heldItem, target.Item);
+    }
 
-        return CaptureAnimalInteraction.CanInteract(pickup, heldItem, target);
+    public static bool TryInteract(PlayerPickup pickup, Item heldItem, ItemUseTarget target)
+    {
+        if (heldItem == null || heldItem == target.Item) return false;
+        foreach (var component in heldItem.GetComponents<UnityEngine.MonoBehaviour>())
+            if (component.isActiveAndEnabled && component is IItemUseRule rule && rule.CanUse(pickup, target))
+                return rule.TryUse(pickup, target);
+        return target.Item != null && CaptureAnimalInteraction.TryInteract(pickup, heldItem, target.Item);
     }
 
     public static bool TryInteract(PlayerPickup pickup, Item heldItem, Item target)
     {
-        return CanInteract(pickup, heldItem, target) &&
-            CaptureAnimalInteraction.TryInteract(pickup, heldItem, target);
+        return target != null && TryInteract(pickup, heldItem,
+            new ItemUseTarget(target, target.transform.position, UnityEngine.Vector3.up));
     }
 }

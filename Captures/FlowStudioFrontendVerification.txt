@@ -1,0 +1,25 @@
+PASS node title and fixed selection bar expose delete actions
+PASS node X removes the node and attached wires
+PASS one undo restores node and all attached wires
+PASS fixed delete button removes selected node without scrolling inspector
+PASS Shift-click selects multiple nodes
+PASS dragging a selected title moves the whole group together
+PASS group movement is one undoable operation
+PASS empty-canvas drag box-selects intersecting nodes
+PASS Ctrl+C and Ctrl+V paste the selected group
+PASS group paste remaps and preserves internal wire
+PASS pasted nodes receive new identities
+PASS batch delete removes pasted group
+PASS batch deletion can be undone in one step
+PASS node search filters the visible palette
+PASS empty node-search results are handled
+PASS right-click opens node context menu
+PASS context delete removes node and closes menu
+PASS Delete inside a text field does not remove the selected node
+PASS Ctrl+A selects all nodes
+PASS delete-all clears nodes, entry and wires
+PASS undo restores full graph after delete-all
+PASS right-click on empty canvas opens canvas menu
+PASS Escape closes context menu
+PASS simulation pane starts collapsed to free inspector space
+PASS simulation pane can be expanded explicitly

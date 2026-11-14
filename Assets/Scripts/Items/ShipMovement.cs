@@ -20,6 +20,7 @@ public class ShipMovement : MonoBehaviour
     [SerializeField, Min(0f)] private float tiltFollowRate = 4f;
 
     private Rigidbody body;
+    private MovementSpeedModifier speedModifier;
     public float CurrentSpeed { get; private set; }
     public float SailAmount => sailAmount;
     public float Steering => steering;
@@ -33,6 +34,7 @@ public class ShipMovement : MonoBehaviour
     private void Awake()
     {
         body = GetComponent<Rigidbody>();
+        speedModifier = GetComponent<MovementSpeedModifier>();
         body.useGravity = false;
         if (ocean == null)
             body.constraints |= RigidbodyConstraints.FreezePositionY |
@@ -51,7 +53,10 @@ public class ShipMovement : MonoBehaviour
         Vector3 forward = Vector3.ProjectOnPlane(body.rotation * Vector3.forward, Vector3.up).normalized;
         // 从实际速度继续加减速，碰撞阻挡后不会积累虚假的航速。
         float speed = Mathf.Max(0f, Vector3.Dot(body.linearVelocity, forward));
-        float targetSpeed = Mathf.Clamp01(sailAmount) * maxSpeed;
+        float multiplier = speedModifier != null ? speedModifier.Multiplier : 1f;
+        float effectiveMaxSpeed = maxSpeed * multiplier;
+        speed = Mathf.Min(speed, effectiveMaxSpeed);
+        float targetSpeed = Mathf.Clamp01(sailAmount) * effectiveMaxSpeed;
         CurrentSpeed = Mathf.MoveTowards(speed, targetSpeed,
             (targetSpeed > speed ? acceleration : deceleration) * Time.fixedDeltaTime);
         float verticalSpeed = 0f;
@@ -71,7 +76,7 @@ public class ShipMovement : MonoBehaviour
             tiltVelocity = Vector3.Cross(body.rotation * Vector3.up, normal) * tiltFollowRate;
         }
         body.linearVelocity = forward * CurrentSpeed + Vector3.up * verticalSpeed;
-        float speedRatio = maxSpeed > 0f ? Mathf.Clamp01(CurrentSpeed / maxSpeed) : 0f;
+        float speedRatio = effectiveMaxSpeed > 0f ? Mathf.Clamp01(CurrentSpeed / effectiveMaxSpeed) : 0f;
         body.angularVelocity = tiltVelocity + Vector3.up * (Mathf.Clamp(steering, -1f, 1f) * maxTurnSpeed * speedRatio * Mathf.Deg2Rad);
     }
 

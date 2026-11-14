@@ -1,0 +1,36 @@
+PASS main + event references validate
+PASS JSON round trip preserves all nodes, parameters, layout and IDs
+PASS existing file is replaced atomically
+PASS file names cannot escape document directory
+PASS unknown schema versions rejected
+PASS main calls event and waits for sailing distance
+PASS travel spawns the island before waiting for arrival
+PASS arrival advances to dialogue placeholder
+PASS transfer occurs once before independent battle wait
+PASS waiting does not repeat immediate actions
+PASS event victory returns to main success route
+PASS event failure returns to main failure route
+PASS optional non-battle branch returns successfully
+PASS stop cleans simulation state
+PASS undo restores document snapshot
+PASS redo restores node identity
+PASS disconnected graph rejected before running
+PASS cycle rejected at connection time
+PASS missing referenced event reported
+PASS event validates with its embedded battle and without a separate battle file
+PASS monkey island validates its waterline, approach region, placement points and room-transfer prefab
+PASS asset inspector exposes only the two explicitly published distances
+PASS saving a graph preserves a newer asset inspector value for an unchanged published field
+PASS replacing the island reports missing placement and approach setup
+PASS all three placement nodes share one editable monkey prefab
+PASS monkey island reaches the authored approach region
+PASS room transfer reaches the combined battle node
+PASS combined battle returns victory to the main flow
+PASS monkey island reaches the authored approach region
+PASS room transfer reaches the combined battle node
+PASS combined battle returns defeat to the main flow
+PASS event round trip preserves the event and embedded battle graphs
+PASS imported event holds direct Unity references to its configured prefabs
+PASS delay waits across advances
+PASS delay and spawn execute from saved schema
+PASS session snapshots definitions before execution

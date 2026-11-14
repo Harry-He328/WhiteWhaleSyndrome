@@ -1,0 +1,24 @@
+PASS saved definition has 60-second duration and eight waves
+PASS first wave immediately spawns exactly one enemy
+PASS wave 2 spawns at 7.5 seconds
+PASS wave 3 spawns at 15 seconds
+PASS wave 4 spawns at 22.5 seconds
+PASS wave 5 spawns at 30 seconds
+PASS wave 6 spawns at 37.5 seconds
+PASS wave 7 spawns at 45 seconds
+PASS wave 8 spawns at 52.5 seconds
+PASS 60-second sequence completes with eight distinct live ships
+PASS enemy collection has no duplicated identities
+PASS time limit does not report victory or stop enemy AI
+PASS one death removes only that enemy and keeps battle running
+PASS clearing every enemy does not automatically win
+PASS completed sequence cannot spawn a ninth ship
+PASS retry resets time, waves and counters
+PASS retry uses only one active spawn sequence
+PASS multiple enemies can own independent projectiles
+PASS stop deactivates every owned enemy immediately
+PASS stop clears projectiles from all enemy owners
+PASS stopped sequence never resumes spawning
+PASS existing player defeat stops every AI and spawn sequence
+PASS defeat does not create later waves
+PASS

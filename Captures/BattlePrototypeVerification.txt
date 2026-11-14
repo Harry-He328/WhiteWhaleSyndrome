@@ -1,0 +1,22 @@
+PASS battle starts with a live enemy
+PASS only the player has a sailing controller
+PASS enemy uses separate red material
+PASS enemy spawns beside player in ocean coordinates
+PASS real cannonball collisions kill and hide enemy
+PASS own cannonballs do not damage player
+PASS victory is reported exactly once
+PASS player cannot fire after battle ends
+PASS repeated damage cannot repeat battle result
+PASS retry restores both health values
+PASS retry resets cannon cooldowns
+PASS enemy cannonball collision destroys player
+PASS defeat is reported exactly once
+PASS defeat stops sailing and firing
+PASS retries leave exactly one enemy
+PASS stop returns battle to idle and removes enemy
+PASS stop immediately clears battle-owned cannonballs
+PASS idle player rejects damage
+PASS new battle after stop creates only one enemy
+PASS tabletop display renders battle meshes
+PASS stationary enemy automatically fires and damages player without AI movement
+PASS

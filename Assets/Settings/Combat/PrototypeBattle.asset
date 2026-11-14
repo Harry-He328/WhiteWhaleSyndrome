@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a2b1cd31319c9043aaddeb0831fab16, type: 3}
+  m_Name: PrototypeBattle
+  m_EditorClassIdentifier: Assembly-CSharp::WhiteWhale.Combat.BattleDefinition
+  enemyPrefab: {fileID: 8108189285377419877, guid: ce3506cd60fbe0e4592d47d2cb8b5f0d, type: 3}
+  playerHealth: 100
+  enemyHealth: 60
+  duration: 120
+  spawnEvents:
+  - spawnTime: 0
+    enemyPrefab: {fileID: 0}
+    spawnOffset: {x: 20, y: 0, z: 0}
+  - spawnTime: 30
+    enemyPrefab: {fileID: 0}
+    spawnOffset: {x: -20, y: 0, z: 0}
+  - spawnTime: 60
+    enemyPrefab: {fileID: 0}
+    spawnOffset: {x: 0, y: 0, z: 20}
+  - spawnTime: 90
+    enemyPrefab: {fileID: 0}
+    spawnOffset: {x: 0, y: 0, z: -20}
+  enemyAutoFire: 1
+  firstShotDelay: 4
+  shotInterval: 3

@@ -34,4 +34,6 @@ public class Cannon : MonoBehaviour
         nextFireTime = Time.time + definition.cooldown;
         return true;
     }
+
+    public void ResetCooldown() => nextFireTime = 0f;
 }

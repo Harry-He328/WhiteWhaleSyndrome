@@ -14,7 +14,6 @@ public sealed class OceanTableDisplay : MonoBehaviour
     [SerializeField, Min(0.0001f)] private float displayScale = 0.05f;
     [SerializeField] private Vector2 oceanCenter;
     [SerializeField] private bool followPlayerShip;
-    [SerializeField] private bool showValidationFixtures;
     private Transform trackedShip;
     private readonly List<MeshFilter> filters = new List<MeshFilter>();
     private readonly Dictionary<Material, Material> materials = new Dictionary<Material, Material>();
@@ -23,6 +22,30 @@ public sealed class OceanTableDisplay : MonoBehaviour
     public int SubmittedMeshes { get; private set; }
     public int CulledMeshes { get; private set; }
     public Transform SourceRoot => sourceRoot;
+    private Item highlightedItem;
+    private Material highlightMaterial;
+
+    public Matrix4x4 DisplayMatrix
+    {
+        get
+        {
+            Vector2 center = oceanCenter;
+            if (followPlayerShip && trackedShip != null && sourceRoot != null)
+            { Vector3 p = sourceRoot.InverseTransformPoint(trackedShip.position); center = new Vector2(p.x, p.z); }
+            return Matrix4x4.TRS(transform.position, Quaternion.Euler(0f, transform.eulerAngles.y, 0f), Vector3.one)
+                * Matrix4x4.Scale(Vector3.one * Mathf.Max(0.0001f, displayScale))
+                * Matrix4x4.Translate(new Vector3(-center.x, 0f, -center.y))
+                * (sourceRoot != null ? sourceRoot.worldToLocalMatrix : Matrix4x4.identity);
+        }
+    }
+
+    public bool ContainsDisplayPoint(Vector3 point)
+    {
+        Vector3 local = Quaternion.Inverse(Quaternion.Euler(0f, transform.eulerAngles.y, 0f)) * (point - transform.position);
+        return Mathf.Abs(local.x) <= windowSize.x * 0.5f && Mathf.Abs(local.z) <= windowSize.y * 0.5f;
+    }
+
+    public void HighlightItem(Item item) => highlightedItem = item;
 
     private void OnEnable() => OceanVisualEvents.Changed += OnVisualsChanged;
 
@@ -56,11 +79,7 @@ public sealed class OceanTableDisplay : MonoBehaviour
         foreach (GameObject root in scene.GetRootGameObjects())
         {
             if (root.GetComponentInChildren<OceanSurface>(true) != null)
-            {
-                Transform fixtures = root.transform.Find("DisplayValidation");
-                if (fixtures != null) fixtures.gameObject.SetActive(showValidationFixtures);
                 Bind(root.transform);
-            }
             if (root.name == "Preview") root.SetActive(false);
         }
     }
@@ -115,8 +134,7 @@ public sealed class OceanTableDisplay : MonoBehaviour
         // Window stays upright and unscaled; its Transform supplies only center and yaw.
         Quaternion yaw = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
         Matrix4x4 table = Matrix4x4.TRS(transform.position, yaw, Vector3.one);
-        Matrix4x4 mapping = table * Matrix4x4.Scale(Vector3.one * scale)
-            * Matrix4x4.Translate(new Vector3(-oceanCenter.x, 0f, -oceanCenter.y)) * sourceRoot.worldToLocalMatrix;
+        Matrix4x4 mapping = DisplayMatrix;
         Shader.SetGlobalVector("_OceanRegionCenter", transform.position);
         Shader.SetGlobalVector("_OceanRegionAxisX", yaw * Vector3.right * half.x);
         Shader.SetGlobalVector("_OceanRegionAxisZ", yaw * Vector3.forward * half.y);
@@ -145,6 +163,15 @@ public sealed class OceanTableDisplay : MonoBehaviour
             {
                 Material material = DisplayMaterial(sourceMaterials[sub]);
                 if (material == null) continue;
+                if (highlightedItem != null && filter.transform.IsChildOf(highlightedItem.transform))
+                {
+                    if (highlightMaterial == null)
+                    {
+                        highlightMaterial = new Material(Shader.Find("WhiteWhale/Clipped Lit"));
+                        highlightMaterial.SetColor("_BaseColor", new Color(1f, 0.8f, 0.15f));
+                    }
+                    material = highlightMaterial;
+                }
                 var parameters = new RenderParams(material) { layer = gameObject.layer,
                     shadowCastingMode = ShadowCastingMode.On, receiveShadows = true };
                 Graphics.RenderMesh(parameters, filter.sharedMesh, sub, matrix);
@@ -160,6 +187,9 @@ public sealed class OceanTableDisplay : MonoBehaviour
         foreach (Material material in materials.Values)
             if (Application.isPlaying) Destroy(material); else DestroyImmediate(material);
         materials.Clear();
+        if (highlightMaterial != null)
+        { if (Application.isPlaying) Destroy(highlightMaterial); else DestroyImmediate(highlightMaterial); }
+        highlightedItem = null;
         filters.Clear();
     }
 }

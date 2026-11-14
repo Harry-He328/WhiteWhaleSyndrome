@@ -10,6 +10,7 @@ public sealed class OceanRoomBridge : MonoBehaviour
     private ShipMovement ship;
     private float sailAmount = 1f;
     private float steering;
+    public OceanTableDisplay Display => display;
     public ShipMovement Ship => ship;
     public bool IsReady => ship != null;
 
