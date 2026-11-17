@@ -47,12 +47,16 @@ Button.small { height: 24px; font-size: 11px; }
 .port:hover { border-color: #edf5ff; }
 .input-port { left: -7px; }
 .output-port { right: -7px; }
+.object-port { background-color: #c5a7ff; }
+.object-input-label { position: absolute; left: 13px; color: #d8c8f8; }
+.object-output-label { color: #d8c8f8; }
 .output-label { position: absolute; right: 17px; font-size: 11px; color: #c1cdd9; height: 20px; }
 .inspector-panel { width: 294px; flex-shrink: 0; background-color: #17212b; border-left-width: 1px; border-left-color: #2c3a48; padding: 13px 10px 5px 10px; }
 .inspector-scroll { flex-grow: 1; min-height: 130px; padding: 0 4px; }
 .inspector-title { font-size: 17px; -unity-font-style: bold; margin: 9px 4px 11px 4px; }
 .parameter-fields { margin-top: 6px; }
 .parameter { margin: 9px 4px; flex-direction: column; align-items: stretch; }
+.node-remarks .unity-base-text-field__input { min-height: 64px; }
 .unity-base-field__label { min-width: 0; width: auto; color: #a6b7c7; font-size: 11px; margin-bottom: 5px; }
 .unity-base-text-field__input, .unity-base-popup-field__input { background-color: #101923; border-width: 1px; border-color: #425363; border-radius: 4px; color: #e3edf6; min-height: 29px; padding: 5px 7px; font-size: 12px; }
 .unity-base-text-field__input:focus { border-color: #81d6c2; }
@@ -85,6 +89,19 @@ Button.small { height: 24px; font-size: 11px; }
 .studio .unity-scroller .unity-base-slider__tracker { background-color: #17222e; border-width: 0; }
 .studio .unity-scroller .unity-base-slider__dragger { background-color: #496071; border-width: 0; border-radius: 4px; }
 .studio .unity-scroller .unity-base-slider__dragger-border { border-width: 0; }
+
+.picker-field { margin: 8px 4px; }
+.picker-label { margin-bottom: 4px; color: #c3d0da; font-size: 12px; }
+Button.picker-button { margin: 0; min-height: 32px; height: auto; padding: 7px 9px; white-space: normal; -unity-text-align: middle-left; }
+Button.picker-result { white-space: normal; height: auto; min-height: 37px; }
+.picker-description { margin: 0 8px 8px 16px; }
+Button.action-shortcut { -unity-text-align: middle-left; }
+.node-issues { color: #ffba9e; padding: 7px 8px; margin: 7px 4px; background-color: #35272a; }
+.inline-error { color: #ffba9e; margin: 0 4px 5px; }
+Button.diagnostic-button { color: #ffceb5; height: auto; min-height: 35px; padding: 7px 10px; white-space: normal; -unity-text-align: middle-left; }
+.placement-preview { height: 112px; margin-top: 5px; margin-bottom: 8px; background-color: #101923; }
+.asset-preview { width: 64px; height: 64px; margin: 2px 4px 5px; background-color: #101923; }
+.prompt-preview { background-color: #111d29; padding: 9px; margin: 6px 2px; color: #e7f4fa; border-radius: 5px; }
 .unity-scroller__low-button, .unity-scroller__high-button { display: none; }
 .selection-bar { height: 39px; flex-shrink: 0; padding: 0 13px; background-color: #182530; border-top-width: 1px; border-top-color: #2a3b49; border-bottom-width: 1px; border-bottom-color: #2a3b49; }
 .selection-label { color: #b3cbd9; font-size: 11px; flex-shrink: 1; }

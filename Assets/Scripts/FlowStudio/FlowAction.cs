@@ -6,6 +6,8 @@ namespace WhiteWhale.FlowStudio
 {
     public abstract class FlowAction : ScriptableObject
     {
+        public virtual string DisplayName => name;
+        public virtual string Description => "";
         public virtual string SubjectLabel => null;
         public virtual string TargetLabel => null;
         public virtual bool AcceptsSubject(GameObject subject) => subject != null;

@@ -25,8 +25,8 @@ public static class FlowStudioFrontendVerification
         fixture.panX = 40; fixture.panY = 90; fixture.zoom = .8f;
         fixture.nodes[0].Position = Vector2.zero; start = fixture.nodes[0].id;
         fixture.nodes[1].Position = new Vector2(870, 0);
-        StudioNode first = fixture.Add("delay", new Vector2(290, 0)); first.title = "等待 A"; a = first.id;
-        StudioNode second = fixture.Add("delay", new Vector2(580, 0)); second.title = "等待 B"; b = second.id;
+        StudioNode first = fixture.Add("delay", new Vector2(290, 0)); first.remarks = "等待 A"; a = first.id;
+        StudioNode second = fixture.Add("delay", new Vector2(580, 0)); second.remarks = "等待 B"; b = second.id;
         fixture.Connect(start, "next", a); fixture.Connect(a, "next", b); fixture.Connect(b, "next", fixture.nodes[1].id);
         ui.Files.Save(temporaryFile, fixture); ui.OpenDocument(temporaryFile);
         step = ticks = 0; report.Clear();
@@ -104,7 +104,15 @@ public static class FlowStudioFrontendVerification
                     ui.Undo(); break;
                 case 7:
                     ui.SelectNode(a);
-                    var field = ui.Root.Q<ScrollView>("node-inspector").Q<TextField>(); field.Focus();
+                    var inspector = ui.Root.Q<ScrollView>("node-inspector");
+                    var field = inspector.Q<TextField>("node-remarks");
+                    Check(field.label == "备注" && field.multiline && field == inspector.Children().Last(),
+                        "multiline remarks appear at the bottom of the node inspector");
+                    Check(inspector.Query<TextField>().ToList().All(input => input.label != "节点名称"),
+                        "node names have no editable field");
+                    Check(ui.Root.Q("node-" + a).Q<Label>("node-title").text == NodeCatalog.Get("delay").label,
+                        "remarks do not change the fixed node title");
+                    field.Focus();
                     Key(field, KeyCode.Delete); Check(ui.Document.Find(a) != null, "Delete inside a text field does not remove the selected node");
                     Key(ui.Root, KeyCode.A, EventModifiers.Control); Check(ui.SelectedNodes.Count == 4, "Ctrl+A selects all nodes");
                     Key(ui.Root, KeyCode.Delete); Check(ui.Document.nodes.Count == 0 && ui.Document.entry == null && ui.Document.edges.Count == 0, "delete-all clears nodes, entry and wires");
@@ -116,7 +124,7 @@ public static class FlowStudioFrontendVerification
                     Pointer(canvas, EventType.MouseDown, outside, 1); Pointer(canvas, EventType.MouseUp, outside, 1);
                     Check(ui.Root.Q("graph-context-menu") != null, "right-click on empty canvas opens canvas menu");
                     Key(ui.Root, KeyCode.Escape); Check(ui.Root.Q("graph-context-menu") == null, "Escape closes context menu");
-                    var toggle = ui.Root.Query<Button>().ToList().Single(button => button.text.Contains("展开模拟"));
+                    var toggle = ui.Root.Query<Button>().ToList().Single(button => button.text.Contains("展开流程模拟"));
                     Check(ui.Root.Q("simulation-panel").resolvedStyle.display == DisplayStyle.None, "simulation pane starts collapsed to free inspector space");
                     Press(toggle); break;
                 case 9:
@@ -130,7 +138,7 @@ public static class FlowStudioFrontendVerification
     {
         EditorApplication.update -= Tick;
         File.WriteAllLines("Captures/FlowStudioFrontendVerification.txt", report);
-        var collapse = ui.Root.Query<Button>().ToList().FirstOrDefault(button => button.text.Contains("收起模拟"));
+        var collapse = ui.Root.Query<Button>().ToList().FirstOrDefault(button => button.text.Contains("收起流程模拟"));
         if (collapse != null) Press(collapse);
         ui.OpenDocument(previousFile);
         // Only this run's UUID-named temporary document is removed.

@@ -109,6 +109,18 @@ namespace WhiteWhale.FlowStudio
                 if (entry.asset != null) assets[entry.guid] = entry.asset;
         }
 
+#if !UNITY_EDITOR
+        internal IEnumerable<KeyValuePair<string, UnityEngine.Object>> AvailableAssets()
+        {
+            if (projectStore && !loadedCatalog)
+            {
+                loadedCatalog = true;
+                foreach (var entry in Resources.LoadAll<FlowEventAsset>(EventFolder)) Register(entry);
+            }
+            return assets;
+        }
+#endif
+
         public UnityEngine.Object ResolveAsset(string guid)
         {
             if (string.IsNullOrEmpty(guid)) return null;
@@ -116,11 +128,7 @@ namespace WhiteWhale.FlowStudio
 #if UNITY_EDITOR
             return UnityEditor.AssetDatabase.LoadMainAssetAtPath(UnityEditor.AssetDatabase.GUIDToAssetPath(guid));
 #else
-            if (projectStore && !loadedCatalog)
-            {
-                loadedCatalog = true;
-                foreach (var entry in Resources.LoadAll<FlowEventAsset>(EventFolder)) Register(entry);
-            }
+            AvailableAssets();
             return assets.GetValueOrDefault(guid);
 #endif
         }

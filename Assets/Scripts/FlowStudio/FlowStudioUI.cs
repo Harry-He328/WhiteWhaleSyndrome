@@ -28,6 +28,7 @@ namespace WhiteWhale.FlowStudio
         private VisualElement root, canvas, world, wires, grid, palette, overlay, ghost;
         private ScrollView inspector, simulationPane;
         private Label titleLabel, kindLabel, fileLabel, statusLabel, zoomLabel;
+        private Label nodeIssues;
         private Button undoButton, redoButton, saveButton, simulateButton, startupButton, addEventButton;
         private string savedJson, selectedNode, selectedEdge, renderedDocument;
         private string draggingNode, gestureBefore, wireFrom, wirePort;
@@ -39,6 +40,10 @@ namespace WhiteWhale.FlowStudio
         private bool previousRunInBackground;
         private UIDocument uiDocument;
         private const float NodeWidth = 216;
+        private const float DataPortY = 128;
+        private const string SpawnResultPort = "spawn-result";
+        private const string RegionWirePrefix = "range-center:";
+        private static readonly Color DataWireColor = new Color(.77f, .65f, 1f);
 
         private void OnEnable()
         {
@@ -119,11 +124,11 @@ namespace WhiteWhale.FlowStudio
                 if (Files.StartupFile == null) Notice("尚未设置游戏入口。");
                 else OpenDocument(Files.StartupFile);
             }), "quiet"));
-            header.Add(Text("纯 UI · 模拟模式", "mode-badge"));
+            header.Add(Text("事件制作", "mode-badge"));
 
             var toolbar = Box("toolbar row"); root.Add(toolbar);
-            toolbar.Add(Button("＋ 整体流程", () => NewDocument("main")));
-            toolbar.Add(Button("＋ 事件流程", () => NewDocument("event")));
+            toolbar.Add(Button("＋ 新建整体流程", () => NewDocument("main")));
+            toolbar.Add(Button("＋ 新建事件", () => NewDocument("event")));
             toolbar.Add(Button("打开", OpenLibrary));
             addEventButton = Button("添加事件", OpenEventLibrary);
             toolbar.Add(addEventButton);
@@ -137,13 +142,13 @@ namespace WhiteWhale.FlowStudio
             toolbar.Add(Button("检查", ValidateDocument));
             toolbar.Add(Button("适应画布", FitGraph));
             var grow = Box(); grow.style.flexGrow = 1; toolbar.Add(grow);
-            simulateButton = Button("▶ 模拟执行", StartSimulation, "primary"); toolbar.Add(simulateButton);
+            simulateButton = Button("▶ 开始模拟", StartSimulation, "primary"); toolbar.Add(simulateButton);
 
             var body = Box("body row"); root.Add(body);
             var left = Box("palette-panel"); body.Add(left);
             left.Add(Text("节点库", "panel-title")); left.Add(Text("拖到画布，也可点击添加", "muted"));
             var paletteScroll = new ScrollView(); paletteScroll.style.flexGrow = 1; left.Add(paletteScroll);
-            var search = new TextField { name = "node-search", tooltip = "按节点名称或类别筛选" };
+            var search = new TextField { name = "node-search", tooltip = "按节点名称或类别搜索" };
             search.AddToClassList("node-search"); search.textEdition.placeholder = "搜索节点…";
             left.Insert(2, search);
             search.RegisterValueChangedCallback(evt => { nodeSearch = evt.newValue; BuildPalette(); });
@@ -169,15 +174,15 @@ namespace WhiteWhale.FlowStudio
             var hint = Text("左键框选 · Shift 多选 · 中键 / 右键拖动平移 · 右键菜单 · Delete 删除 · Ctrl+C / V 复制粘贴", "canvas-hint"); center.Add(hint);
 
             var right = Box("inspector-panel"); body.Add(right);
-            right.Add(Text("节点参数", "panel-title"));
+            right.Add(Text("节点设置", "panel-title"));
             inspector = new ScrollView(); inspector.name = "node-inspector"; inspector.AddToClassList("inspector-scroll"); right.Add(inspector);
-            var simHeading = Button("▸ 展开模拟与运行记录", ToggleSimulationPanel, "simulation-heading"); right.Add(simHeading);
+            var simHeading = Button("▸ 展开流程模拟", ToggleSimulationPanel, "simulation-heading"); right.Add(simHeading);
             simulationToggle = simHeading;
             simulationPane = new ScrollView(); simulationPane.name = "simulation-panel"; simulationPane.AddToClassList("simulation-scroll"); right.Add(simulationPane);
             simulationPane.style.display = DisplayStyle.None;
             var footer = Box("footer row"); root.Add(footer);
             statusLabel = Text("就绪", "status"); footer.Add(statusLabel); footer.Add(Box("grow"));
-            footer.Add(Text("实景验证请在主场景运行", "muted"));
+            footer.Add(Text("流程模拟仅预览节点顺序。", "muted"));
             overlay = Box("modal-overlay fill"); overlay.style.display = DisplayStyle.None; root.Add(overlay);
             overlay.RegisterCallback<PointerDownEvent>(evt => evt.StopPropagation());
             root.RegisterCallback<PointerDownEvent>(evt =>
@@ -192,7 +197,8 @@ namespace WhiteWhale.FlowStudio
         {
             palette.Clear(); string group = null;
             foreach (NodeSpec spec in NodeCatalog.All.Where(s => s.Allowed(Document.kind) &&
-                (string.IsNullOrWhiteSpace(nodeSearch) || s.label.IndexOf(nodeSearch, StringComparison.OrdinalIgnoreCase) >= 0 || s.group.IndexOf(nodeSearch, StringComparison.OrdinalIgnoreCase) >= 0)))
+                (string.IsNullOrWhiteSpace(nodeSearch) ||
+                 (s.label + " " + s.group + " " + s.description).IndexOf(nodeSearch, StringComparison.OrdinalIgnoreCase) >= 0)))
             {
                 if (group != spec.group) { group = spec.group; palette.Add(Text(group, "group-label")); }
                 var row = Box("palette-node row"); row.name = "palette-" + spec.type;
@@ -231,7 +237,15 @@ namespace WhiteWhale.FlowStudio
                 });
                 palette.Add(row);
             }
-            if (palette.childCount == 0) palette.Add(Text("没有匹配的节点", "muted wrap"));
+            if (Document.kind == "event")
+                foreach (var action in actionLibrary.Values.Where(item => item.Matches(nodeSearch)).OrderBy(item => item.Label))
+                {
+                    var shortcut = Button(action.Label, () => AddAction(action, ToGraph(canvas.contentRect.center)),
+                        "palette-node action-shortcut");
+                    shortcut.tooltip = action.Detail;
+                    palette.Add(shortcut);
+                }
+            if (palette.childCount == 0) palette.Add(Text("未找到匹配的节点", "muted wrap"));
         }
 
         private Vector2 Pan => new Vector2(VisibleDocument.panX, VisibleDocument.panY);
@@ -239,6 +253,10 @@ namespace WhiteWhale.FlowStudio
         private Vector2 ToCanvas(Vector2 point) => point * VisibleDocument.zoom + Pan;
         private static Vector2 InputPoint(StudioNode node) => node.Position + new Vector2(0, 65);
         private static Vector2 OutputPoint(StudioNode node, int index) => node.Position + new Vector2(NodeWidth, 103 + index * 25);
+        private static Vector2 DataInputPoint(StudioNode node) => node.Position + new Vector2(0, DataPortY);
+        private static Vector2 DataOutputPoint(StudioNode node) => node.Position + new Vector2(NodeWidth, DataPortY);
+        private static float NodeHeight(StudioNode node) => 112 + Math.Max(1, NodeCatalog.Get(node.type)?.ports.Length ?? 0) * 25 +
+            (node.SpawnsObject || node.type == "wait_region" ? 25 : 0);
 
         private void BuildGraph()
         {
@@ -250,11 +268,11 @@ namespace WhiteWhale.FlowStudio
                 if (spec == null) continue;
                 var card = Box("graph-node"); card.name = "node-" + node.id; card.userData = node.id;
                 card.style.left = node.x; card.style.top = node.y; card.style.width = NodeWidth;
-                card.style.height = 100 + Math.Max(1, spec.ports.Length) * 25 + 12;
+                card.style.height = NodeHeight(node);
                 card.style.borderTopColor = spec.color; world.Add(card); cards[node.id] = card;
                 var heading = Box("node-heading row"); card.Add(heading);
                 var dot = Box("node-dot"); dot.style.backgroundColor = spec.color; heading.Add(dot);
-                var name = Text(node.title, "node-name"); name.name = "node-title"; heading.Add(name);
+                var name = Text(node.Name, "node-name"); name.name = "node-title"; heading.Add(name);
                 var remove = Button("×", () => DeleteNode(node.id), "node-remove"); remove.name = "delete-" + node.id;
                 remove.tooltip = "删除这个节点（可撤销）"; remove.SetEnabled(Simulation == null); heading.Add(remove);
                 remove.RegisterCallback<PointerDownEvent>(evt => evt.StopPropagation());
@@ -264,7 +282,7 @@ namespace WhiteWhale.FlowStudio
                     var input = Box("port input-port"); input.name = "input-" + node.id; input.style.top = 58; card.Add(input);
                     input.RegisterCallback<PointerDownEvent>(evt =>
                     {
-                        if (wireFrom != null) Try(() => FinishWire(node.id));
+                        if (wireFrom != null && wirePort != SpawnResultPort) Try(() => FinishWire(node.id));
                         else SelectNode(node.id);
                         evt.StopPropagation();
                     });
@@ -272,17 +290,15 @@ namespace WhiteWhale.FlowStudio
                 for (int i = 0; i < spec.ports.Length; i++)
                 {
                     int index = i;
-                    var outputLabel = Text(spec.portLabels[i], "output-label"); outputLabel.style.top = 93 + i * 25; card.Add(outputLabel);
+                    var outputLabel = Text(RouteLabel(node, i), "output-label");
+                    outputLabel.name = "route-label-" + i;
+                    outputLabel.style.top = 93 + i * 25;
+                    card.Add(outputLabel);
                     var output = Box("port output-port"); output.name = "output-" + node.id + "-" + spec.ports[i];
                     output.style.top = 96 + i * 25; output.style.backgroundColor = spec.color; card.Add(output);
-                    output.RegisterCallback<PointerDownEvent>(evt =>
-                    {
-                        if (Simulation != null || evt.button != 0) return;
-                        wireFrom = node.id; wirePort = spec.ports[index]; wirePointer = canvas.WorldToLocal(evt.position);
-                        canvas.CapturePointer(evt.pointerId); wires.MarkDirtyRepaint(); evt.StopPropagation();
-                        Notice("拖到目标节点左侧入口；也可松开后点击入口。Esc 取消。");
-                    });
+                    output.RegisterCallback<PointerDownEvent>(evt => BeginWire(evt, node.id, spec.ports[index]));
                 }
+                BuildDataPort(card, node);
                 card.RegisterCallback<PointerDownEvent>(evt =>
                 {
                     if (evt.button == 0 && evt.clickCount == 2 && TryOpenEvent(node))
@@ -328,6 +344,46 @@ namespace WhiteWhale.FlowStudio
             ApplyView(); RefreshNodeStyles();
         }
 
+        private void BuildDataPort(VisualElement card, StudioNode node)
+        {
+            bool output = node.SpawnsObject;
+            if (!output && node.type != "wait_region") return;
+
+            string caption = output ? "生成结果" : "范围中心";
+            var label = Text(caption, output ? "output-label object-output-label" : "object-input-label");
+            label.style.top = DataPortY - 10;
+            var port = Box(output ? "port output-port object-port" : "port input-port object-port");
+            port.style.top = DataPortY - 7;
+            port.name = (output ? "spawn-result-" : "range-center-") + node.id;
+            port.tooltip = output ? "拖到「等待进入范围」的「范围中心」" : "接收「生成物件」的「生成结果」";
+            port.RegisterCallback<PointerDownEvent>(evt =>
+            {
+                if (Simulation != null || evt.button != 0) return;
+                if (output) BeginWire(evt, node.id, SpawnResultPort);
+                else
+                {
+                    if (wireFrom != null && wirePort == SpawnResultPort) Try(() => FinishWire(node.id));
+                    else SelectNode(node.id);
+                    evt.StopPropagation();
+                }
+            });
+            card.Add(label);
+            card.Add(port);
+        }
+
+        private void BeginWire(PointerDownEvent evt, string nodeId, string port)
+        {
+            if (Simulation != null || evt.button != 0) return;
+            wireFrom = nodeId;
+            wirePort = port;
+            wirePointer = canvas.WorldToLocal(evt.position);
+            canvas.CapturePointer(evt.pointerId);
+            wires.MarkDirtyRepaint();
+            evt.StopPropagation();
+            Notice(port == SpawnResultPort ? "拖到「范围中心」。按 Esc 取消。" :
+                "选择或拖到目标节点的执行入口。按 Esc 取消。");
+        }
+
         private void ApplyView()
         {
             FlowDocument doc = VisibleDocument;
@@ -367,14 +423,30 @@ namespace WhiteWhale.FlowStudio
         {
             if (wireFrom != null && canvas.worldBound.Contains(evt.position))
             {
-                StudioNode target = VisibleDocument.nodes.FirstOrDefault(n => n.type != "start" && n.type != "on_signal" &&
-                    Vector2.Distance(ToCanvas(InputPoint(n)), canvas.WorldToLocal(evt.position)) < 18);
+                var target = WireTargetAt(canvas.WorldToLocal(evt.position));
                 if (target != null) Try(() => FinishWire(target.id));
             }
             if (panning && panButton == 1 && Vector2.Distance(pointerOrigin, evt.position) < 5) ShowCanvasMenu(evt.position);
             panning = false; boxing = false; marquee.style.display = DisplayStyle.None;
             if (canvas.HasPointerCapture(evt.pointerId)) canvas.ReleasePointer(evt.pointerId);
             RefreshMeta();
+        }
+
+        private StudioNode WireTargetAt(Vector2 point)
+        {
+            bool dataWire = wirePort == SpawnResultPort;
+            float nearest = 18 * 18;
+            StudioNode target = null;
+            foreach (var node in VisibleDocument.nodes)
+            {
+                if (node == null || (dataWire ? node.type != "wait_region" : node.type == "start" || node.type == "on_signal"))
+                    continue;
+                float distance = (ToCanvas(dataWire ? DataInputPoint(node) : InputPoint(node)) - point).sqrMagnitude;
+                if (distance >= nearest) continue;
+                nearest = distance;
+                target = node;
+            }
+            return target;
         }
         private void CanvasWheel(WheelEvent evt)
         {
@@ -402,16 +474,40 @@ namespace WhiteWhale.FlowStudio
         {
             if (VisibleDocument == null) return;
             Painter2D painter = context.painter2D;
-            foreach (StudioEdge edge in VisibleDocument.edges)
+            foreach (var (id, from, to, dataWire) in GraphWires())
             {
-                StudioNode from = VisibleDocument.Find(edge.from), to = VisibleDocument.Find(edge.to);
-                if (from == null || to == null) continue;
-                NodeSpec spec = NodeCatalog.Get(from.type);
-                int port = Array.IndexOf(spec.ports, edge.port); if (port < 0) continue;
-                Stroke(painter, ToCanvas(OutputPoint(from, port)), ToCanvas(InputPoint(to)), edge.id == selectedEdge ? new Color(1, .82f, .4f) : new Color(.43f, .65f, .7f), edge.id == selectedEdge ? 4 : 2.2f);
+                Color color = id == selectedEdge ? new Color(1, .82f, .4f) :
+                    dataWire ? DataWireColor : new Color(.43f, .65f, .7f);
+                Stroke(painter, ToCanvas(from), ToCanvas(to), color, id == selectedEdge ? 4 : 2.2f);
             }
             if (wireFrom != null && VisibleDocument.Find(wireFrom) is StudioNode source)
-                Stroke(painter, ToCanvas(OutputPoint(source, Array.IndexOf(NodeCatalog.Get(source.type).ports, wirePort))), wirePointer, new Color(.98f, .8f, .4f), 3);
+            {
+                bool dataWire = wirePort == SpawnResultPort;
+                Vector2 start = dataWire ? DataOutputPoint(source) :
+                    OutputPoint(source, Array.IndexOf(NodeCatalog.Get(source.type).ports, wirePort));
+                Stroke(painter, ToCanvas(start), wirePointer, dataWire ? DataWireColor : new Color(.98f, .8f, .4f), 3);
+            }
+        }
+
+        private IEnumerable<(string id, Vector2 from, Vector2 to, bool dataWire)> GraphWires()
+        {
+            foreach (var edge in VisibleDocument.edges)
+            {
+                var source = VisibleDocument.Find(edge.from);
+                var destination = VisibleDocument.Find(edge.to);
+                var spec = source == null ? null : NodeCatalog.Get(source.type);
+                if (spec == null || destination == null) continue;
+                int port = Array.IndexOf(spec.ports, edge.port);
+                if (port >= 0) yield return (edge.id, OutputPoint(source, port), InputPoint(destination), false);
+            }
+
+            foreach (var destination in VisibleDocument.nodes.Where(node => node.type == "wait_region" &&
+                         NodeParameters.IsSpawnOutput(node.parameters.target)))
+            {
+                var source = VisibleDocument.Find(NodeParameters.SpawnNodeId(destination.parameters.target));
+                if (source?.SpawnsObject == true)
+                    yield return (RegionWirePrefix + destination.id, DataOutputPoint(source), DataInputPoint(destination), true);
+            }
         }
         private static void Stroke(Painter2D painter, Vector2 from, Vector2 to, Color color, float width)
         {
@@ -421,12 +517,11 @@ namespace WhiteWhale.FlowStudio
         }
         private string HitEdge(Vector2 point)
         {
-            foreach (StudioEdge edge in VisibleDocument.edges)
+            string closestEdge = null;
+            float closestDistance = 7 * 7;
+            foreach (var (id, from, to, _) in GraphWires())
             {
-                StudioNode source = VisibleDocument.Find(edge.from), target = VisibleDocument.Find(edge.to);
-                if (source == null || target == null) continue;
-                int index = Array.IndexOf(NodeCatalog.Get(source.type).ports, edge.port); if (index < 0) continue;
-                Vector2 a = ToCanvas(OutputPoint(source, index)), d = ToCanvas(InputPoint(target));
+                Vector2 a = ToCanvas(from), d = ToCanvas(to);
                 float tangent = Mathf.Max(65, Mathf.Abs(d.x - a.x) * .45f);
                 Vector2 b = a + Vector2.right * tangent, c = d + Vector2.left * tangent, previous = a;
                 for (int i = 1; i <= 32; i++)
@@ -435,37 +530,124 @@ namespace WhiteWhale.FlowStudio
                     Vector2 next = q * q * q * a + 3 * q * q * t * b + 3 * q * t * t * c + t * t * t * d;
                     Vector2 segment = next - previous;
                     Vector2 closest = previous + segment * Mathf.Clamp01(Vector2.Dot(point - previous, segment) / Mathf.Max(.001f, segment.sqrMagnitude));
-                    if (Vector2.Distance(point, closest) < 7) return edge.id;
+                    float distance = (point - closest).sqrMagnitude;
+                    if (distance < closestDistance)
+                    {
+                        closestDistance = distance;
+                        closestEdge = id;
+                    }
                     previous = next;
                 }
             }
-            return null;
+            return closestEdge;
         }
 
         public void AddNode(string type, Vector2 at)
         {
             if (Simulation != null) return;
-            if (type == "start" && Document.nodes.Any(n => n.type == "start")) throw new InvalidOperationException("已有开始节点。每个流程只需要一个入口。");
+            if (type == "start" && Document.nodes.Any(n => n.type == "start")) throw new InvalidOperationException("每个流程只能有一个「开始」节点。");
             Edit(() => selectedNode = Document.Add(type, at).id);
             selection.Clear(); selection.Add(selectedNode); selectedEdge = null; BuildGraph(); BuildInspector();
+        }
+
+        private void AddAction(PickerOption action, Vector2 position)
+        {
+            if (Simulation != null) return;
+            StudioNode node = null;
+            Edit(() =>
+            {
+                node = Document.Add("run_action", position);
+                node.parameters.actionGuid = action.Key;
+            });
+            BuildGraph();
+            SelectNode(node.id);
+        }
+
+        private void ChooseNextStep(StudioNode source, string port, string label, StudioEdge previous)
+        {
+            var options = NodeCatalog.All.Where(spec => spec.Allowed(Document.kind) && spec.type != "start" &&
+                    spec.type != "on_signal" && (previous == null || spec.ports.Length != 0))
+                .Select(spec => new PickerOption("new:" + spec.type, spec.label, "添加 · " + spec.group, spec.description)).ToList();
+            if (Document.kind == "event")
+                options.AddRange(actionLibrary.Values.Select(action => new PickerOption("action:" + action.Key,
+                    action.Label, "添加 · 玩法", action.Detail)));
+            options.AddRange(Document.nodes.Where(node => Document.CanConnect(source.id, node) && node.id != previous?.to)
+                .Select(node => new PickerOption("existing:" + node.id, node.Name, "连接已有节点", NodeReferenceDetail(node))));
+            OpenPicker((previous == null ? "选择下一步 · " : "调整下一步 · ") + label, options,
+                "暂无可连接的节点。", key =>
+                {
+                    if (key.StartsWith("existing:", StringComparison.Ordinal))
+                    {
+                        Connect(source.id, port, key.Substring("existing:".Length));
+                        return;
+                    }
+                    StudioNode added = null;
+                    Edit(() =>
+                    {
+                        var destination = Document.Find(previous?.to);
+                        Vector2 position = source.Position + new Vector2(NodeWidth + 80, 0);
+                        int portIndex = Array.IndexOf(NodeCatalog.Get(source.type).ports, port);
+                        if (portIndex > 0) position.y += portIndex * 200;
+                        if (destination != null && (destination.Position - position).sqrMagnitude < 35000)
+                            destination.Position += new Vector2(NodeWidth + 80, 0);
+                        while (Document.nodes.Any(node => Mathf.Abs(position.x - node.x) < NodeWidth + 18 &&
+                            Mathf.Abs(position.y - node.y) < 165)) position.y += 190;
+                        bool isAction = key.StartsWith("action:", StringComparison.Ordinal);
+                        added = Document.Add(isAction ? "run_action" : key.Substring("new:".Length), position);
+                        if (isAction)
+                        {
+                            var action = actionLibrary[key.Substring("action:".Length)];
+                            added.parameters.actionGuid = action.Key;
+                        }
+                        Document.Connect(source.id, port, added.id);
+                        if (destination != null)
+                            foreach (string next in NodeCatalog.Get(added.type).ports)
+                                Document.Connect(added.id, next, destination.id);
+                    });
+                    BuildGraph();
+                    SelectNode(added.id);
+                    RevealNode(added);
+                });
         }
         public void Connect(string from, string port, string to)
         { if (Simulation != null) return; Edit(() => Document.Connect(from, port, to)); wires.MarkDirtyRepaint(); BuildInspector(); }
         private void FinishWire(string to)
-        { Connect(wireFrom, wirePort, to); wireFrom = null; wires.MarkDirtyRepaint(); Notice("已连接。每个出口只连接一个节点，可重新连线替换。"); }
+        {
+            if (wirePort == SpawnResultPort)
+            {
+                Edit(() => Document.ConnectRegionCenter(wireFrom, to));
+                SelectNode(to);
+                Notice("范围中心已连接。");
+            }
+            else
+            {
+                Connect(wireFrom, wirePort, to);
+                Notice("连线已更新。");
+            }
+            wireFrom = null;
+            wires.MarkDirtyRepaint();
+        }
+
+        private static void ClearRegionCenter(StudioNode node)
+        {
+            node.parameters.target = "";
+            node.parameters.destinationPoint = "";
+        }
         public void SelectNode(string id)
         { selection.Clear(); if (id != null) selection.Add(id); selectedNode = id; selectedEdge = null; root.Focus(); RefreshNodeStyles(); BuildInspector(); wires.MarkDirtyRepaint(); }
         private void Edit(Action action)
         {
             if (Simulation != null) return;
             string before = Document.ToJson(); action(); history.Record(before, Document); RefreshMeta(); RefreshSummaries();
+            RefreshNodeIssues();
         }
         private void RefreshSummaries()
         {
             foreach (StudioNode node in VisibleDocument.nodes)
             {
                 if (summaries.TryGetValue(node.id, out Label summary)) summary.text = NodeCatalog.Summary(VisibleDocument, node, ReferenceLabel, AssetLabel);
-                if (cards.TryGetValue(node.id, out VisualElement card)) card.Q<Label>("node-title").text = node.title;
+                if (node.type == "choice" && cards.TryGetValue(node.id, out VisualElement card))
+                    for (int i = 0; i < 2; i++) card.Q<Label>("route-label-" + i).text = RouteLabel(node, i);
             }
         }
         public void Undo()
@@ -481,12 +663,21 @@ namespace WhiteWhale.FlowStudio
                 if (selection.Count > 0)
                 {
                     Document.nodes.RemoveAll(n => selection.Contains(n.id)); Document.edges.RemoveAll(e => selection.Contains(e.from) || selection.Contains(e.to));
+                    foreach (var node in Document.nodes.Where(node => node.type == "wait_region" &&
+                                 NodeParameters.IsSpawnOutput(node.parameters.target) &&
+                                 selection.Contains(NodeParameters.SpawnNodeId(node.parameters.target))))
+                        ClearRegionCenter(node);
                     if (selection.Contains(Document.entry)) Document.entry = null;
                 }
-                else if (selectedEdge != null) Document.edges.RemoveAll(e => e.id == selectedEdge);
+                else if (selectedEdge.StartsWith(RegionWirePrefix, StringComparison.Ordinal))
+                {
+                    var target = Document.Find(selectedEdge.Substring(RegionWirePrefix.Length));
+                    if (target != null) ClearRegionCenter(target);
+                }
+                else Document.edges.RemoveAll(e => e.id == selectedEdge);
             });
             int count = selection.Count; ClearSelection(); CloseContextMenu(); BuildGraph(); BuildInspector(); RefreshMeta();
-            Notice(count > 0 ? "已删除 " + count + " 个节点及其连线。可撤销恢复。" : "已断开连线。可撤销恢复。");
+            Notice(count > 0 ? "已删除 " + count + " 个节点及其连线。可撤销恢复。" : "连线已断开。");
         }
         private void DuplicateNode()
         {
@@ -512,16 +703,32 @@ namespace WhiteWhale.FlowStudio
             if (VisibleDocument.nodes.Count == 0 || canvas.contentRect.width < 50) return;
             float minX = VisibleDocument.nodes.Min(n => n.x), minY = VisibleDocument.nodes.Min(n => n.y);
             float width = VisibleDocument.nodes.Max(n => n.x + NodeWidth) - minX;
-            float height = VisibleDocument.nodes.Max(n => n.y + 175) - minY;
+            float height = VisibleDocument.nodes.Max(n => n.y + NodeHeight(n)) - minY;
             VisibleDocument.zoom = Mathf.Clamp(Mathf.Min((canvas.contentRect.width - 65) / width, (canvas.contentRect.height - 65) / height), .3f, 1.15f);
             VisibleDocument.panX = (canvas.contentRect.width - width * VisibleDocument.zoom) / 2 - minX * VisibleDocument.zoom;
             VisibleDocument.panY = (canvas.contentRect.height - height * VisibleDocument.zoom) / 2 - minY * VisibleDocument.zoom;
             ApplyView(); RefreshMeta();
         }
 
+        private void RevealNode(StudioNode node)
+        {
+            if (node == null || canvas.contentRect.width < 50) return;
+            Vector2 screen = ToCanvas(node.Position + new Vector2(NodeWidth / 2, 75));
+            var view = canvas.contentRect;
+            if (screen.x >= 75 && screen.x <= view.width - 75 && screen.y >= 55 && screen.y <= view.height - 55) return;
+            Vector2 offset = view.center - screen;
+            Document.panX += offset.x;
+            Document.panY += offset.y;
+            ApplyView();
+            RefreshMeta();
+        }
+
         private void BuildInspector()
         {
             inspector.Clear();
+            nodeIssues = null;
+            refreshPlacementPreview = null;
+            placementPicked = null;
             if (selection.Count > 1)
             {
                 inspector.Add(Text("已选择 " + selection.Count + " 个节点", "inspector-title"));
@@ -536,15 +743,21 @@ namespace WhiteWhale.FlowStudio
             if (node == null)
             {
                 if (selectedEdge != null)
-                { inspector.Add(Text("已选择连线", "inspector-title")); inspector.Add(Text("Delete 删除，或点击下方按钮断开。", "muted wrap")); inspector.Add(Button("断开连线", DeleteSelection, "danger")); }
+                {
+                    bool dataWire = selectedEdge.StartsWith(RegionWirePrefix, StringComparison.Ordinal);
+                    inspector.Add(Text(dataWire ? "生成结果 → 范围中心" : "已选择连线", "inspector-title"));
+                    if (Simulation == null) inspector.Add(Button("断开连线", DeleteSelection, "danger"));
+                }
                 else
                 {
                     inspector.Add(Text(KindLabel(VisibleDocument.kind), "inspector-title"));
-                    inspector.Add(Text("选择节点编辑参数。", "muted wrap"));
+                    inspector.Add(Text("选择节点查看设置，或从「开始」添加第一步。", "muted wrap"));
+                    if (Simulation == null && Document.Find(Document.entry) != null)
+                        inspector.Add(Button("选中开始节点", () => SelectNode(Document.entry), "primary"));
                     if (Simulation == null)
                     {
                         Field(inspector, "流程名称", Document.title, value => Edit(() => Document.title = value));
-                        if (Document.kind == "event") BuildPrefabInputs();
+                        if (Document.kind == "event" && Document.prefabInputs.Count != 0) BuildPrefabInputs();
                     }
                     inspector.Add(Text("节点 " + VisibleDocument.nodes.Count + "   /   连线 " + VisibleDocument.edges.Count, "muted"));
                 }
@@ -553,18 +766,34 @@ namespace WhiteWhale.FlowStudio
             NodeSpec spec = NodeCatalog.Get(node.type);
             inspector.Add(Text(spec.label, "inspector-title")); inspector.Add(Text(spec.description, "muted wrap"));
             var fields = Box("parameter-fields"); inspector.Add(fields);
-            Field(fields, "节点名称", node.title, value => Edit(() => node.title = value));
-            NodeParameters p = node.parameters;
             BuildNodeFields(fields, node);
+            nodeIssues = Text("", "node-issues wrap");
+            fields.Add(nodeIssues);
+            RefreshNodeIssues();
             if (Simulation == null && Document.kind == "event") BuildPublication(fields, node);
             fields.SetEnabled(Simulation == null);
-            if (spec.ports.Length > 0) inspector.Add(Text("出口连接", "group-label"));
+            if (spec.ports.Length > 0) inspector.Add(Text("下一步", "group-label"));
             for (int i = 0; i < spec.ports.Length; i++)
             {
                 string port = spec.ports[i]; StudioEdge edge = VisibleDocument.Output(node.id, port);
+                string route = RouteLabel(node, i);
+                string next = edge != null ? VisibleDocument.Find(edge.to)?.Name : null;
                 var row = Box("connection-row"); inspector.Add(row);
-                row.Add(Text(spec.portLabels[i] + " → " + (edge != null ? VisibleDocument.Find(edge.to)?.title : "未连接"), "wrap"));
-                if (edge != null && Simulation == null) row.Add(Button("断开", () => { Edit(() => Document.edges.Remove(edge)); wires.MarkDirtyRepaint(); BuildInspector(); }, "small"));
+                row.Add(Text(route + (next == null ? " · 未连接" : " → " + next), "wrap"));
+                if (Simulation == null)
+                {
+                    bool firstStep = node.type == "start" && VisibleDocument.nodes.Count == 2 && next != null;
+                    var choose = Button(firstStep ? "添加第一步" : next == null ? "选择下一步" : "更改下一步",
+                        () => ChooseNextStep(node, port, route, edge), "quiet");
+                    choose.name = "choose-next-" + port;
+                    row.Add(choose);
+                    if (edge != null) row.Add(Button("断开", () =>
+                    {
+                        Edit(() => Document.edges.Remove(edge));
+                        wires.MarkDirtyRepaint();
+                        BuildInspector();
+                    }, "small"));
+                }
             }
             if (Simulation == null)
             {
@@ -572,14 +801,40 @@ namespace WhiteWhale.FlowStudio
                 if (node.type != "start") buttons.Add(Button("复制节点", DuplicateNode));
                 buttons.Add(Button("删除节点", DeleteSelection, "danger"));
             }
+            var remarks = Field(inspector, "备注", node.remarks ?? "", value => Edit(() => node.remarks = value), true);
+            remarks.name = "node-remarks";
+            remarks.AddToClassList("node-remarks");
+            remarks.isReadOnly = Simulation != null;
+        }
+
+        private string RouteLabel(StudioNode node, int index)
+        {
+            var spec = NodeCatalog.Get(node.type);
+            if (node.type == "choice")
+            {
+                string option = index == 0 ? node.parameters.firstChoice : node.parameters.secondChoice;
+                if (!string.IsNullOrWhiteSpace(option)) return option;
+            }
+            return spec.portLabels[index];
+        }
+
+        private void RefreshNodeIssues()
+        {
+            if (nodeIssues == null || VisibleDocument.Find(selectedNode) is not StudioNode node) return;
+            var problems = FlowValidation.ParameterIssues(VisibleDocument, node, Files.ResolveAsset)
+                .Concat(SelectionIssues(VisibleDocument, node)).Distinct().ToArray();
+            nodeIssues.text = string.Join("\n", problems);
+            nodeIssues.style.display = problems.Length == 0 ? DisplayStyle.None : DisplayStyle.Flex;
         }
 
         private void BuildPublication(VisualElement fields, StudioNode node)
         {
             var candidates = FlowExposedParameter.Publishable(node).ToList();
             if (candidates.Count == 0) return;
-            var foldout = new Foldout { name = "published-parameters", text = "事件资产公开参数", value = false };
-            fields.Add(foldout);
+            var settings = new Foldout { text = "更多设置", value = false };
+            fields.Add(settings);
+            var foldout = new Foldout { name = "published-parameters", text = "可公开的设置", value = false };
+            settings.Add(foldout);
             foreach (var field in candidates)
             {
                 var setting = node.published?.FirstOrDefault(entry => entry?.key == field.Key);
@@ -592,7 +847,12 @@ namespace WhiteWhale.FlowStudio
                         else node.published.RemoveAll(entry => entry?.key == field.Key);
                     });
                     BuildInspector();
-                    inspector.Q<Foldout>(name: "published-parameters").value = true;
+                    var refreshed = inspector.Q<Foldout>(name: "published-parameters");
+                    if (refreshed != null)
+                    {
+                        refreshed.GetFirstAncestorOfType<Foldout>()?.SetValueWithoutNotify(true);
+                        refreshed.value = true;
+                    }
                 });
                 if (setting != null)
                     Field(foldout, "显示名称", setting.label, label => Edit(() => setting.label = label.Trim()));
@@ -602,14 +862,14 @@ namespace WhiteWhale.FlowStudio
         private void BuildEventPicker(VisualElement fields, NodeParameters p)
         {
             var titles = SavedEvents().ToDictionary(entry => entry.file, entry => entry.title + "  /  " + entry.file);
-            titles[""] = "请选择事件";
+            titles[""] = "选择事件";
             string current = p.eventFile ?? "";
             if (!titles.ContainsKey(current)) titles.Add(current, current);
-            var picker = new DropdownField("事件文件", titles.Keys.ToList(), current, file => titles[file], file => titles[file]);
+            var picker = new DropdownField("事件", titles.Keys.ToList(), current, file => titles[file], file => titles[file]);
             picker.RegisterValueChangedCallback(evt => { Edit(() => p.eventFile = evt.newValue); BuildInspector(); });
             fields.Add(picker);
             if (!string.IsNullOrEmpty(current))
-                inspector.Add(Button("打开事件内部流程 ↗", () => Guard(() => OpenDocument(current))));
+                inspector.Add(Button("打开事件", () => Guard(() => OpenDocument(current))));
         }
 
         private IEnumerable<(string file, string title)> SavedEvents()
@@ -626,7 +886,7 @@ namespace WhiteWhale.FlowStudio
         private void OpenEventLibrary()
         {
             if (Simulation != null || Document.kind != "main") return;
-            var modal = Modal("添加事件", "选择已保存的事件，再连接它的成功和失败出口。");
+            var modal = Modal("添加事件", "选择事件后，分别设置成功和失败分支。");
             var list = new ScrollView(); list.style.maxHeight = 340; modal.Add(list);
             foreach (var entry in SavedEvents())
                 list.Add(Button(entry.title + "\n" + entry.file, () =>
@@ -636,7 +896,6 @@ namespace WhiteWhale.FlowStudio
                     {
                         var position = (canvas.contentRect.center - new Vector2(Document.panX, Document.panY)) / Document.zoom;
                         var node = Document.Add("call_event", position);
-                        node.title = entry.title;
                         node.parameters.eventFile = entry.file;
                         selectedNode = node.id;
                     });
@@ -651,7 +910,7 @@ namespace WhiteWhale.FlowStudio
         {
             var names = choices.GroupBy(choice => choice.value).ToDictionary(group => group.Key, group => group.First().label);
             value = value ?? "";
-            if (!names.ContainsKey(value)) names.Add(value, "当前引用不可选");
+            if (!names.ContainsKey(value)) names.Add(value, "当前选项不可用");
             var picker = new DropdownField(label, names.Keys.ToList(), value, key => names[key], key => names[key]);
             picker.RegisterValueChangedCallback(evt =>
             {
@@ -660,10 +919,11 @@ namespace WhiteWhale.FlowStudio
             });
             fields.Add(picker);
         }
-        private static void Field(VisualElement parent, string label, string value, Action<string> changed, bool multiline = false)
+        private static TextField Field(VisualElement parent, string label, string value, Action<string> changed, bool multiline = false)
         {
             var field = new TextField(label) { value = value, isDelayed = true, multiline = multiline };
             field.AddToClassList("parameter"); parent.Add(field); field.RegisterValueChangedCallback(evt => changed(evt.newValue));
+            return field;
         }
         private static void Number(VisualElement parent, string label, float value, Action<float> changed)
         { var field = new FloatField(label) { value = value, isDelayed = true }; field.AddToClassList("parameter"); parent.Add(field); field.RegisterValueChangedCallback(evt => changed(evt.newValue)); }
@@ -705,7 +965,7 @@ namespace WhiteWhale.FlowStudio
             {
                 Files.SetStartupFile(CurrentFile);
                 RefreshMeta();
-                Notice("游戏将启动 " + Document.title);
+                Notice("游戏入口已设为 " + Document.title);
             });
         }
         private void Notice(string message, bool error = false)
@@ -715,9 +975,16 @@ namespace WhiteWhale.FlowStudio
         {
             if (Simulation != null) StopSimulation();
             string name = FlowFileStore.FileName(file);
-            var graph = Files.Load(name);
+            var graph = LoadEditorGraph(name);
             CurrentFile = name;
             ShowGraph(graph);
+        }
+
+        private FlowDocument LoadEditorGraph(string file)
+        {
+            var graph = Files.Load(file);
+            MigrateLegacyPlacement(graph);
+            return graph;
         }
 
         private void ShowGraph(FlowDocument graph)
@@ -744,7 +1011,9 @@ namespace WhiteWhale.FlowStudio
         {
             Document = FlowDocument.Empty(kind, "新" + KindLabel(kind));
             baseline = null;
-            CurrentFile = null; savedJson = ""; history.Clear(); ClearSelection(); RefreshAll(); Notice("已新建，完成后保存为流程文件。");
+            CurrentFile = null; savedJson = ""; history.Clear(); ClearSelection(); RefreshAll();
+            SelectNode(Document.entry);
+            Notice("选择「添加第一步」开始编排。");
         });
         public void SaveCurrent(Action after = null)
         {
@@ -773,7 +1042,7 @@ namespace WhiteWhale.FlowStudio
         {
             if (Simulation != null) return;
             bool saveEvent = Document.kind == "event";
-            VisualElement modal = Modal("保存流程文件", saveEvent ? "事件文件包含流程、公开参数和资源引用。" : "流程文件包含节点、连线与布局。");
+            VisualElement modal = Modal("保存流程文件", "");
             var name = new TextField("文件名") { value = FlowFileStore.FileName(CurrentFile ?? ("new_" + Document.kind), saveEvent) }; modal.Add(name);
             modal.Add(Text("保存位置：" + (saveEvent ? Files.EventRoot : Files.Root), "muted wrap path-label"));
             modal.Add(Button("保存", () =>
@@ -783,7 +1052,7 @@ namespace WhiteWhale.FlowStudio
                 Action save = () => { SaveTo(file); CloseModal(); after?.Invoke(); };
                 if (File.Exists(Files.PathFor(file)) && file != CurrentFile)
                 {
-                    VisualElement confirm = Modal("覆盖已有文件？", "将覆盖 " + file + "。当前图已准备好，确认后写入。");
+                    VisualElement confirm = Modal("覆盖已有文件？", "将替换文件「" + file + "」。");
                     confirm.Add(Button("覆盖并保存", save, "primary")); confirm.Add(Button("取消", CloseModal));
                 }
                 else save();
@@ -793,7 +1062,7 @@ namespace WhiteWhale.FlowStudio
         private void OpenLibrary()
         {
             if (Simulation != null) { Notice("请先停止模拟，再打开其他文件。", true); return; }
-            VisualElement modal = Modal("流程文件", "选择整体流程或事件流程。两者使用同一套编辑操作。");
+            VisualElement modal = Modal("流程文件", "选择整体流程或事件流程。");
             var list = new ScrollView(); list.style.maxHeight = 340; modal.Add(list);
             foreach (string file in Files.List())
             {
@@ -813,45 +1082,76 @@ namespace WhiteWhale.FlowStudio
         }
         private VisualElement Modal(string title, string subtitle)
         {
-            overlay.Clear(); overlay.style.display = DisplayStyle.Flex;
-            var modal = Box("modal"); overlay.Add(modal); modal.Add(Text(title, "modal-title")); modal.Add(Text(subtitle, "muted wrap")); return modal;
+            overlay.Clear();
+            overlay.style.display = DisplayStyle.Flex;
+            var modal = Box("modal");
+            overlay.Add(modal);
+            modal.Add(Text(title, "modal-title"));
+            if (!string.IsNullOrWhiteSpace(subtitle)) modal.Add(Text(subtitle, "muted wrap"));
+            return modal;
         }
         private void CloseModal() { overlay.Clear(); overlay.style.display = DisplayStyle.None; root.Focus(); }
         private void ValidateDocument()
         {
             var errors = CheckGraph(out _);
-            VisualElement modal = Modal(errors.Count == 0 ? "检查通过" : "发现 " + errors.Count + " 个问题", errors.Count == 0 ? "入口、连线、参数与事件引用均有效。" : "请修复以下问题后再模拟。");
+            ShowIssues(errors);
+        }
+
+        private void ShowIssues(List<FlowIssue> errors)
+        {
+            VisualElement modal = Modal(errors.Count == 0 ? "检查通过" : "发现 " + errors.Count + " 个问题",
+                errors.Count == 0 ? "可以开始模拟。" : "选择问题可定位对应节点。");
             var list = new ScrollView(); list.style.maxHeight = 330; modal.Add(list);
-            foreach (string error in errors) list.Add(Text("• " + error, "validation-error wrap"));
+            foreach (var error in errors)
+            {
+                if (error.Node == null || string.IsNullOrEmpty(error.Node.id))
+                {
+                    list.Add(Text(error.ToString(), "validation-error wrap"));
+                    continue;
+                }
+                var row = Button(error.ToString(), () =>
+                {
+                    CloseModal();
+                    void Locate()
+                    {
+                        if (error.File != null) OpenDocument(error.File);
+                        SelectNode(error.Node.id);
+                        RevealNode(Document.Find(error.Node.id));
+                    }
+                    if (error.File == null) Locate(); else Guard(Locate);
+                }, "diagnostic-button");
+                list.Add(row);
+            }
             modal.Add(Button("返回编辑", CloseModal, "primary"));
         }
 
         public void StartSimulation()
         {
             if (Simulation != null) return;
-            List<string> errors = CheckGraph(out var graph);
-            if (errors.Count > 0) { ValidateDocument(); return; }
-            simulationActions = new SimulationActions(); Simulation = new FlowSession(graph, Files.Load, simulationActions);
+            var errors = CheckGraph(out var graph);
+            if (errors.Count > 0) { ShowIssues(errors); return; }
+            simulationActions = new SimulationActions(); Simulation = new FlowSession(graph, LoadEditorGraph, simulationActions);
             paused = false; ClearSelection(); SetSimulationPanel(true);
             Simulation.Changed += SimulationChanged; RefreshAll();
-            Notice("模拟只改变运行数据，不会生成任何实际场景物件。");
+            Notice("模拟已开始。");
         }
 
-        private List<string> CheckGraph(out FlowDocument graph)
+        private List<FlowIssue> CheckGraph(out FlowDocument graph)
         {
             graph = Document.Clone();
             try
             {
                 if (FlowFileStore.IsEvent(CurrentFile)) Files.MergePublishedValues(CurrentFile, graph, baseline);
-                return FlowValidation.Check(graph, Files.Load, Files.ResolveAsset);
+                return FlowValidation.CheckDetails(graph, LoadEditorGraph, Files.ResolveAsset, SelectionIssues);
             }
-            catch (Exception error) { return new List<string> { error.Message }; }
+            catch (Exception error) { return new List<FlowIssue> { new FlowIssue(graph, null, null, error.Message) }; }
         }
         public void StopSimulation()
         {
             if (Simulation == null) return;
             Simulation.Changed -= SimulationChanged; Simulation.Stop(); Simulation = null; simulationActions = null;
-            ClearSelection(); RefreshAll(); Notice("模拟已停止，返回编辑。");
+            SetSimulationPanel(false);
+            ClearSelection(); RefreshAll(); Notice("模拟已结束。");
         }
         private void SimulationChanged()
         {
@@ -872,12 +1172,14 @@ namespace WhiteWhale.FlowStudio
             simulationPane.Clear();
             if (Simulation == null)
             {
-                simulationPane.Add(Text("先检查，再模拟", "inspector-title"));
-                simulationPane.Add(Text("模拟会高亮当前节点。等待条件通过按钮提供，模拟不会修改场景或执行动作资源。", "muted wrap"));
-                simulationPane.Add(Button("▶ 模拟当前流程", StartSimulation, "primary")); return;
+                simulationPane.Add(Text("流程模拟", "inspector-title"));
+                simulationPane.Add(Text("预览节点顺序。场景表现可在游戏中查看。", "muted wrap"));
+                simulationPane.Add(Button("▶ 开始模拟", StartSimulation, "primary")); return;
             }
-            string status = Simulation.Status == SessionStatus.Running ? paused ? "已暂停" : "运行中" : Simulation.Status == SessionStatus.Completed ? "已完成" : "已失败";
-            simulationPane.Add(Text(status + (string.IsNullOrEmpty(simulationActions.Stage) ? "" : " · " + simulationActions.Stage), "inspector-title"));
+            string status = Simulation.Status == SessionStatus.Running ? paused ? "模拟已暂停" : "模拟运行中" :
+                Simulation.Status == SessionStatus.Completed ? "模拟完成" :
+                Simulation.ExecutionError == null ? "流程结果为失败" : "模拟出错";
+            simulationPane.Add(Text(status, "inspector-title"));
             simulationPane.Add(Text(Simulation.Message, "wrap"));
             var controls = Box("row"); simulationPane.Add(controls);
             controls.Add(Button(paused ? "继续" : "暂停", () => { paused = !paused; BuildSimulationPane(); }));
@@ -888,24 +1190,37 @@ namespace WhiteWhale.FlowStudio
             {
                 switch (node.type)
                 {
-                    case "wait_near": case "wait_region": simulationPane.Add(Button("模拟：位置条件已满足", () => Resolve("next"), "primary")); break;
-                    case "wait_travel": simulationPane.Add(Button("模拟：累计位移已达成", () => Resolve("next"), "primary")); break;
+                    case "wait_near": simulationPane.Add(Button("满足距离条件", () => Resolve("next"), "primary")); break;
+                    case "wait_region": simulationPane.Add(Button("进入范围", () => Resolve("next"), "primary")); break;
+                    case "wait_travel": simulationPane.Add(Button("完成移动", () => Resolve("next"), "primary")); break;
                     case "wait_signal":
-                        simulationPane.Add(Button("模拟发送：" + node.parameters.signal, () =>
+                        simulationPane.Add(Button("模拟操作 · " + FlowSignals.Label(node.parameters.signal), () =>
                         {
                             Simulation.Advance(0, 1);
                             if (Simulation.ReceiveSignal(node.parameters.signal)) Simulation.Advance(0);
                         }, "primary"));
                         break;
-                    case "wait_confirmation": simulationPane.Add(Button("模拟：已确认", () => Resolve("next"), "primary")); break;
-                    case "delay": simulationPane.Add(Button("模拟：跳过等待", () => Resolve("next"))); break;
+                    case "wait_confirmation":
+                        simulationPane.Add(Text(node.parameters.note, "prompt-preview wrap"));
+                        simulationPane.Add(Button("确认提示", () => Resolve("next"), "primary"));
+                        break;
+                    case "choice":
+                        simulationPane.Add(Text(node.parameters.note, "prompt-preview wrap"));
+                        simulationPane.Add(Button(node.parameters.firstChoice, () => Resolve("first"), "primary"));
+                        simulationPane.Add(Button(node.parameters.secondChoice, () => Resolve("second")));
+                        break;
+                    case "branch" when node.parameters.checkDistance:
+                        simulationPane.Add(Button("条件满足", () => Resolve("yes"), "primary"));
+                        simulationPane.Add(Button("条件不满足", () => Resolve("no")));
+                        break;
+                    case "delay": simulationPane.Add(Button("跳过等待", () => Resolve("next"))); break;
                     case "run_action":
                         var results = Box("row"); simulationPane.Add(results);
-                        results.Add(Button("动作成功", () => Resolve("success"), "primary")); results.Add(Button("动作失败", () => Resolve("failure"), "danger")); break;
+                        results.Add(Button("玩法成功", () => Resolve("success"), "primary")); results.Add(Button("玩法失败", () => Resolve("failure"), "danger")); break;
                 }
             }
             foreach (string effect in simulationActions.Effects.TakeLast(5)) simulationPane.Add(Text("↳ " + effect, "effect-line wrap"));
-            simulationPane.Add(Text("执行记录", "group-label"));
+            simulationPane.Add(Text("模拟记录", "group-label"));
             foreach (string line in Simulation.Log.TakeLast(16)) simulationPane.Add(Text(line, "log-line wrap"));
         }
         private void OnKey(KeyDownEvent evt)

@@ -9,11 +9,14 @@ namespace WhiteWhale.Combat
         [SerializeField] private BattleDefinition definition;
         [SerializeField] private bool winWhenSpawningFinishedAndAllEnemiesDefeated = true;
 
+        public override string DisplayName => "开始海战";
+        public override string Description => "开始指定配置的海战，按胜负继续。";
+
         public override FlowActionRun Begin(FlowActionContext context, GameObject subject, GameObject target)
         {
             var controller = context.Host.GetComponent<BattleController>();
             if (controller == null || definition == null)
-                throw new System.InvalidOperationException("战斗动作缺少战斗系统或配置。");
+                throw new System.InvalidOperationException("海战无法开始。请检查战斗配置。");
             controller.BeginConfiguredBattle(definition);
             return new Run(controller, winWhenSpawningFinishedAndAllEnemiesDefeated);
         }

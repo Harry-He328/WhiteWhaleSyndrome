@@ -11,6 +11,7 @@ namespace WhiteWhale.FlowStudio
         void Enter(StudioNode node, Dictionary<string, GameObject> spawned);
         // null = waiting, otherwise an output port ID. Throw to report an execution error.
         string Poll(StudioNode node, float elapsed, Dictionary<string, GameObject> spawned);
+        bool MatchesObject(string reference, GameObject item, Dictionary<string, GameObject> spawned) => true;
         void Stop();
     }
 
@@ -49,12 +50,14 @@ namespace WhiteWhale.FlowStudio
                 frame.node.type != "wait_signal" || string.IsNullOrWhiteSpace(name) ||
                 !string.Equals(frame.node.parameters.signal?.Trim(), name.Trim(), StringComparison.Ordinal))
                 return false;
+            string item = frame.node.parameters.item;
+            if (!string.IsNullOrEmpty(item) && !actions.MatchesObject(item, subject, frame.spawned)) return false;
             frame.spawned[NodeParameters.SignalObject] = subject;
             frame.receivedSignal = true;
             return true;
         }
 
-        public FlowSession(FlowDocument root, Func<string, FlowDocument> load, IFlowActions actions, GameObject signalObject = null)
+        public FlowSession(FlowDocument root, Func<string, FlowDocument> load, IFlowActions actions)
         {
             this.actions = actions;
             FlowDocument CachedLoad(string name)
@@ -71,7 +74,6 @@ namespace WhiteWhale.FlowStudio
             List<string> errors = FlowValidation.Check(root, CachedLoad);
             if (errors.Count > 0) { Fail(string.Join("\n", errors)); return; }
             var frame = new Frame { document = root, node = root.Find(root.entry) };
-            if (signalObject != null) frame.spawned[NodeParameters.SignalObject] = signalObject;
             stack.Add(frame);
         }
 
@@ -88,9 +90,9 @@ namespace WhiteWhale.FlowStudio
                     if (!frame.entered)
                     {
                         frame.entered = true;
-                        Log.Add(frame.document.title + " › " + node.title);
+                        Log.Add(frame.document.title + " › " + node.Name);
                         actions.Enter(node, frame.spawned);
-                        Message = node.title;
+                        Message = node.Name;
                         Changed?.Invoke();
                     }
                     if (node.type == "end")
@@ -99,7 +101,7 @@ namespace WhiteWhale.FlowStudio
                         if (stack.Count == 1)
                         {
                             Status = node.parameters.success ? SessionStatus.Completed : SessionStatus.Failed;
-                            Message = node.parameters.success ? "流程完成" : "流程返回失败";
+                            Message = node.parameters.success ? "流程完成" : "流程失败";
                             Log.Add(Message); Changed?.Invoke(); return;
                         }
                         stack.RemoveAt(stack.Count - 1);
@@ -128,7 +130,7 @@ namespace WhiteWhale.FlowStudio
         {
             Frame frame = Current;
             StudioEdge edge = frame.document.Output(frame.node.id, port);
-            if (edge == null) throw new InvalidOperationException(frame.node.title + "：出口未连接：" + port);
+            if (edge == null) throw new InvalidOperationException(frame.node.Name + "：未设置下一步。");
             Completed.Add(frame.document.id + "/" + frame.node.id);
             frame.node = frame.document.Find(edge.to) ?? throw new InvalidOperationException("目标节点不存在。");
             frame.elapsed = 0; frame.entered = false; frame.receivedSignal = false;
@@ -146,7 +148,6 @@ namespace WhiteWhale.FlowStudio
         public readonly Dictionary<string, bool> Flags = new Dictionary<string, bool>();
         public readonly List<string> Effects = new List<string>();
         private string outcome;
-        public string Stage { get; private set; }
         public void Resolve(string port) => outcome = port;
         public void Enter(StudioNode node, Dictionary<string, GameObject> spawned)
         {
@@ -154,14 +155,13 @@ namespace WhiteWhale.FlowStudio
             NodeParameters p = node.parameters;
             switch (node.type)
             {
-                case "stage": Stage = p.stage; Effects.Add("切换阶段：" + p.stage); break;
                 case "set_flag":
                     Flags[NodeParameters.ConditionOutput(node.id)] = p.value;
                     if (!string.IsNullOrEmpty(p.flag)) Flags[p.flag] = p.value;
                     break;
-                case "spawn": Effects.Add("生成：" + node.title); break;
-                case "transfer": Effects.Add("移动：" + node.title); break;
-                case "run_action": Effects.Add("执行：" + node.title); break;
+                case "spawn": Effects.Add("生成：" + node.Name); break;
+                case "transfer": Effects.Add("移动：" + node.Name); break;
+                case "run_action": Effects.Add("执行：" + node.Name); break;
             }
         }
         public string Poll(StudioNode node, float elapsed, Dictionary<string, GameObject> spawned)
@@ -169,15 +169,17 @@ namespace WhiteWhale.FlowStudio
             if (outcome != null) return outcome;
             switch (node.type)
             {
-                case "wait_near": case "wait_region": case "wait_travel": case "wait_confirmation": case "run_action": return null;
+                case "wait_near": case "wait_region": case "wait_travel": case "wait_confirmation": case "run_action": case "choice": return null;
                 case "delay": return elapsed >= node.parameters.seconds ? "next" : null;
+                case "branch" when node.parameters.checkDistance: return null;
                 case "branch":
-                    if (!Flags.TryGetValue(node.parameters.flag, out bool value)) throw new InvalidOperationException("条件尚未设置：" + node.parameters.flag);
+                    if (!Flags.TryGetValue(node.parameters.flag, out bool value))
+                        throw new InvalidOperationException("未找到条件的记录结果。请检查结果来源。");
                     return value ? "yes" : "no";
                 default: return "next";
             }
         }
-        public void Stop() { outcome = null; Flags.Clear(); Effects.Clear(); Stage = null; }
+        public void Stop() { outcome = null; Flags.Clear(); Effects.Clear(); }
     }
 
     /// <summary>JSON snapshots keep Undo independent of UnityEditor and support a standalone player.</summary>

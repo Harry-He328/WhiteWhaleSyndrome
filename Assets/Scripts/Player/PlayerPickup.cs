@@ -27,6 +27,7 @@ public class PlayerPickup : MonoBehaviour
 
     public Rigidbody HeldBody => heldBody;
     public Item HeldItem => heldBody != null ? heldBody.GetComponent<Item>() : null;
+    public static event System.Action<PlayerPickup, GameObject> ItemPickedUp;
 
     private void Awake()
     {
@@ -78,6 +79,7 @@ public class PlayerPickup : MonoBehaviour
         }
 
         Hold(body);
+        ItemPickedUp?.Invoke(this, body.gameObject);
         return true;
     }
 

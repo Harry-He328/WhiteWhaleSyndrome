@@ -9,6 +9,9 @@ namespace WhiteWhale.Flow
         [SerializeField, Min(0.01f)] private float radius = 1f;
         [SerializeField] private bool planar;
 
+        public float Radius => radius;
+        public bool HorizontalOnly => planar;
+
         public bool Contains(Vector3 position)
         {
             Vector3 offset = position - transform.position;

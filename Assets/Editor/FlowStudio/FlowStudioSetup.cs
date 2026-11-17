@@ -11,7 +11,7 @@ public static class FlowStudioSetup
 {
     public const string ScenePath = "Assets/Scenes/FlowStudio.unity";
 
-    [MenuItem("White Whale/Flow Studio/打开纯 UI 工作台")]
+    [MenuItem("White Whale/Flow Studio/打开事件编辑器")]
     public static void Open()
     {
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;

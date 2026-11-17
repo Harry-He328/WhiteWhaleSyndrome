@@ -100,23 +100,23 @@ public static class FlowStudioInteractionVerification
                     Check(ui.Document.zoom > zoom, "wheel input zooms canvas");
                     ui.OpenDocument("tabletop_main.flow.json"); break;
                 case 6:
-                    Press("▶ 模拟执行"); Check(ui.Simulation != null, "simulation toolbar button starts runner");
+                    Press("▶ 开始模拟"); Check(ui.Simulation != null, "route rehearsal starts");
                     Press("暂停");
                     for (int i = 0; i < 4 && ui.Simulation.CurrentNode.type != "wait_travel"; i++) Press("单步");
                     Check(ui.Simulation.CurrentNode.type == "wait_travel", "pause and single-step select a pending wait node across event call");
                     break;
                 case 7:
-                    Press("模拟：累计位移已达成");
+                    Press("完成移动");
                     Check(ui.Simulation.CurrentDocument.kind == "event" && ui.Simulation.CurrentNode.type == "wait_region", "simulation opens referenced event graph and highlights arrival wait");
-                    Press("模拟：位置条件已满足"); break;
+                    Press("进入范围"); break;
                 case 8:
                     Check(ui.Simulation.CurrentNode.type == "wait_confirmation", "arrival advances to confirmation");
-                    Press("模拟：已确认"); break;
+                    Press("确认提示"); break;
                 case 9:
                     Check(ui.Simulation.CurrentNode.type == "run_action", "confirmation advances to first action");
-                    Press("动作成功");
+                    Press("玩法成功");
                     Check(ui.Simulation.CurrentNode.type == "run_action", "first action advances to the next action");
-                    Press("动作成功"); break;
+                    Press("玩法成功"); break;
                 case 10:
                     Check(ui.Simulation.Status == SessionStatus.Completed && ui.Simulation.CurrentDocument.kind == "main", "victory button returns event result and completes main flow");
                     Press("停止"); Check(ui.Simulation == null, "stop button returns to editable document");

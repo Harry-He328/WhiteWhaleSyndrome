@@ -59,7 +59,7 @@ internal sealed class FlowEventAssetInspector : ScriptedImporterEditor
                 .Select(entry => (node, entry.setting, entry.field))).ToArray();
             if (inputs.Length == 0 && fields.Length == 0)
             {
-                EditorGUILayout.HelpBox("此事件没有公开参数。可在流程工作台选择公开项。", MessageType.Info);
+                EditorGUILayout.HelpBox("暂无公开设置。可在事件编辑器中选择需要公开的设置。", MessageType.Info);
                 return;
             }
 
@@ -116,7 +116,7 @@ internal sealed class FlowEventAssetInspector : ScriptedImporterEditor
         if (selected != null && (!path.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase) ||
             AssetDatabase.LoadMainAssetAtPath(path) != selected))
         {
-            error = "请选择 Project 中的预制体。";
+            error = "请选择项目中的物件资源。";
             return;
         }
         assign(selected == null ? "" : AssetDatabase.AssetPathToGUID(path));

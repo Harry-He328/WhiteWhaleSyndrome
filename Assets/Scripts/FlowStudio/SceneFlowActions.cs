@@ -19,7 +19,7 @@ namespace WhiteWhale.FlowStudio
         private Vector3 previousPosition;
         private float traveled;
         private bool confirmed;
-        public string Stage { get; private set; }
+        private string choice;
 
         public SceneFlowActions(FlowActionContext context, Func<string, UnityEngine.Object> resolveAsset,
             Dictionary<string, GameObject> bindings)
@@ -34,17 +34,25 @@ namespace WhiteWhale.FlowStudio
             foreach (var node in document.nodes)
                 foreach (string reference in node.parameters.ObjectReferences(node.type))
                     if (!string.IsNullOrEmpty(reference) && reference != NodeParameters.SignalObject && !NodeParameters.IsSpawnOutput(reference))
-                        Require(bindings.TryGetValue(reference, out var target) && target != null, node, "场景对象未绑定：" + reference);
+                        Require(bindings.TryGetValue(reference, out var target) && target != null, node,
+                            reference == NodeParameters.PlayerShip ? "当前场景未配置玩家船。" : "场景对象未绑定：" + reference);
         }
 
         public void Confirm() => confirmed = true;
+        public void Choose(string option) => choice = option;
+
+        public bool MatchesObject(string reference, GameObject item, Dictionary<string, GameObject> spawned) =>
+            item != null && ObjectByReference(reference, spawned) == item;
+
+        private GameObject ObjectByReference(string reference, Dictionary<string, GameObject> spawned) =>
+            NodeParameters.IsSpawnOutput(reference) ? spawned.GetValueOrDefault(NodeParameters.SpawnNodeId(reference)) :
+            reference == NodeParameters.SignalObject ? spawned.GetValueOrDefault(reference) : bindings.GetValueOrDefault(reference ?? "");
 
         private Transform Resolve(StudioNode node, string reference, Dictionary<string, GameObject> spawned)
         {
-            GameObject result = NodeParameters.IsSpawnOutput(reference) ?
-                spawned.GetValueOrDefault(NodeParameters.SpawnNodeId(reference)) :
-                reference == NodeParameters.SignalObject ? spawned.GetValueOrDefault(reference) : bindings.GetValueOrDefault(reference ?? "");
-            Require(result != null, node, "找不到对象：" + reference);
+            GameObject result = ObjectByReference(reference, spawned);
+            Require(result != null, node, reference == NodeParameters.PlayerShip ?
+                "当前场景中找不到玩家船。" : "找不到对象：" + reference);
             return result.transform;
         }
 
@@ -62,7 +70,7 @@ namespace WhiteWhale.FlowStudio
             Require(prefab != null, node, "预制体不可用。");
             Transform anchor = Point(node, Resolve(node, p.destination, spawned), p.destinationPoint);
             Vector3 position = anchor.position;
-            Quaternion rotation = anchor.rotation;
+            Quaternion rotation = anchor.rotation * Quaternion.Euler(p.destinationAngles);
             if (p.placement == "relative") position += anchor.rotation * p.placementOffset;
             if (p.placement == "projected")
             {
@@ -70,7 +78,8 @@ namespace WhiteWhale.FlowStudio
                 Vector3 forward = Vector3.ProjectOnPlane(reference.forward, Vector3.up).normalized;
                 Require(forward.sqrMagnitude > 0, node, "朝向参考没有有效的水平朝向。");
                 Vector3 right = Vector3.Cross(Vector3.up, forward);
-                position = new Vector3(reference.position.x, anchor.position.y, reference.position.z) +
+                float height = (anchor.position + anchor.rotation * p.projectedAnchorOffset).y;
+                position = new Vector3(reference.position.x, height, reference.position.z) +
                     right * p.placementOffset.x + Vector3.up * p.placementOffset.y + forward * p.placementOffset.z;
                 rotation = prefab.transform.rotation;
             }
@@ -78,7 +87,10 @@ namespace WhiteWhale.FlowStudio
             generated.Add(instance);
             SceneManager.MoveGameObjectToScene(instance, anchor.gameObject.scene);
             instance.transform.localScale *= p.spawnScale;
-            instance.transform.position += position - Point(node, instance.transform, p.sourcePoint).position;
+            if (string.IsNullOrEmpty(p.sourcePoint))
+                instance.transform.position -= rotation * p.spawnOriginOffset * p.spawnScale;
+            else
+                instance.transform.position += position - Point(node, instance.transform, p.sourcePoint).position;
             if (p.parentToTargetRoot) instance.transform.SetParent(anchor.root, true);
             instance.SetActive(true);
             spawned.Add(node.id, instance);
@@ -114,7 +126,9 @@ namespace WhiteWhale.FlowStudio
                 item.SetParent(null, true);
                 SceneManager.MoveGameObjectToScene(item.gameObject, destination);
             }
-            item.SetPositionAndRotation(target.position, target.rotation);
+            var p = node.parameters;
+            Vector3 positionAtTarget = target.position + (p.customLocation ? target.rotation * p.placementOffset : Vector3.zero);
+            item.SetPositionAndRotation(positionAtTarget, target.rotation * Quaternion.Euler(p.destinationAngles));
             FlowSceneChanges.Notify(previous);
             if (destination != previous) FlowSceneChanges.Notify(destination);
         }
@@ -125,11 +139,11 @@ namespace WhiteWhale.FlowStudio
             switch (node.type)
             {
                 case "wait_travel":
-                    previousPosition = Resolve(node, p.actor, spawned).position;
+                    previousPosition = Resolve(node, NodeParameters.PlayerShip, spawned).position;
                     traveled = 0;
                     break;
                 case "wait_confirmation": confirmed = false; break;
-                case "stage": Stage = p.stage; break;
+                case "choice": choice = null; break;
                 case "set_flag":
                     flags[NodeParameters.ConditionOutput(node.id)] = p.value;
                     if (!string.IsNullOrEmpty(p.flag)) flags[p.flag] = p.value;
@@ -158,22 +172,30 @@ namespace WhiteWhale.FlowStudio
             switch (node.type)
             {
                 case "wait_travel":
-                    Vector3 position = Resolve(node, p.actor, spawned).position;
+                    Vector3 position = Resolve(node, NodeParameters.PlayerShip, spawned).position;
                     Vector3 step = position - previousPosition;
                     if (p.planarDistance) step.y = 0;
                     traveled += step.magnitude;
                     previousPosition = position;
                     return traveled >= p.travelDistance ? "next" : null;
                 case "wait_near":
-                    Vector3 distance = Resolve(node, p.actor, spawned).position - Resolve(node, p.target, spawned).position;
-                    if (p.planarDistance) distance.y = 0;
-                    return distance.sqrMagnitude <= p.radius * p.radius ? "next" : null;
+                    return InRange(Resolve(node, NodeParameters.PlayerShip, spawned), Resolve(node, p.target, spawned).position, p) ? "next" : null;
                 case "wait_region":
-                    var region = Point(node, Resolve(node, p.target, spawned), p.destinationPoint).GetComponent<FlowRegion>();
+                    var center = Point(node, Resolve(node, p.target, spawned), p.destinationPoint);
+                    var ship = Resolve(node, NodeParameters.PlayerShip, spawned);
+                    if (p.placeRadius)
+                    {
+                        var regionCenter = center.position + (p.customLocation ? center.rotation * p.placementOffset : Vector3.zero);
+                        return InRange(ship, regionCenter, p) ? "next" : null;
+                    }
+                    var region = center.GetComponent<FlowRegion>();
                     Require(region != null, node, "所选对象上没有对应的区域。");
-                    return region.Contains(Resolve(node, p.actor, spawned).position) ? "next" : null;
+                    return region.Contains(ship.position) ? "next" : null;
                 case "wait_confirmation": return confirmed ? "next" : null;
+                case "choice": return choice;
                 case "delay": return elapsed >= p.seconds ? "next" : null;
+                case "branch" when p.checkDistance:
+                    return InRange(Resolve(node, NodeParameters.PlayerShip, spawned), Resolve(node, p.target, spawned).position, p) ? "yes" : "no";
                 case "branch":
                     Require(flags.TryGetValue(p.flag, out bool value), node, "条件尚未设置。");
                     return value ? "yes" : "no";
@@ -182,6 +204,13 @@ namespace WhiteWhale.FlowStudio
                     return result.HasValue ? (result.Value ? "success" : "failure") : null;
                 default: return "next";
             }
+        }
+
+        private static bool InRange(Transform actor, Vector3 center, NodeParameters parameters)
+        {
+            Vector3 distance = actor.position - center;
+            if (parameters.planarDistance) distance.y = 0;
+            return distance.sqrMagnitude <= parameters.radius * parameters.radius;
         }
 
         public void Stop()
@@ -205,7 +234,7 @@ namespace WhiteWhale.FlowStudio
 
         private static void Require(bool condition, StudioNode node, string message)
         {
-            if (!condition) throw new InvalidOperationException(node.title + "：" + message);
+            if (!condition) throw new InvalidOperationException(node.Name + "：" + message);
         }
     }
 }

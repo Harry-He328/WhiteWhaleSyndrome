@@ -80,7 +80,7 @@ namespace WhiteWhale.FlowStudio
             foreach (StudioNode node in Document.nodes)
             {
                 Vector2 position = ToCanvas(node.Position);
-                float height = 112 + Math.Max(1, NodeCatalog.Get(node.type).ports.Length) * 25;
+                float height = NodeHeight(node);
                 if (rectangle.Overlaps(new Rect(position, new Vector2(NodeWidth, height) * Document.zoom))) selection.Add(node.id);
             }
             selectedNode = selection.FirstOrDefault(); selectedEdge = null; RefreshNodeStyles(); BuildInspector();
@@ -92,7 +92,7 @@ namespace WhiteWhale.FlowStudio
         {
             if (Simulation != null) return;
             var copied = Document.nodes.Where(n => selection.Contains(n.id) && n.type != "start").ToList();
-            if (copied.Count == 0) { Notice("请选择可复制的节点；开始节点保持唯一。"); return; }
+            if (copied.Count == 0) { Notice("请选择可复制的节点。"); return; }
             var data = new ClipboardData { nodes = copied };
             var ids = new HashSet<string>(copied.Select(n => n.id));
             data.edges = Document.edges.Where(e => ids.Contains(e.from) && ids.Contains(e.to)).ToList();
@@ -149,7 +149,7 @@ namespace WhiteWhale.FlowStudio
         {
             simulationExpanded = expanded;
             simulationPane.style.display = expanded ? DisplayStyle.Flex : DisplayStyle.None;
-            simulationToggle.text = expanded ? "▾ 收起模拟与运行记录" : "▸ 展开模拟与运行记录";
+            simulationToggle.text = expanded ? "▾ 收起流程模拟" : "▸ 展开流程模拟";
         }
 
         private VisualElement ContextAt(Vector2 position)
@@ -172,7 +172,7 @@ namespace WhiteWhale.FlowStudio
             if (Simulation != null) return;
             if (!selection.Contains(id)) SelectNode(id);
             VisualElement menu = ContextAt(position);
-            menu.Add(Text(selection.Count > 1 ? "选中 " + selection.Count + " 个节点" : Document.Find(id).title, "context-title"));
+            menu.Add(Text(selection.Count > 1 ? "选中 " + selection.Count + " 个节点" : Document.Find(id).Name, "context-title"));
             MenuAction(menu, "复制       Ctrl+C", CopySelection);
             MenuAction(menu, "创建副本   Ctrl+D", DuplicateNode);
             MenuAction(menu, "删除       Delete", DeleteSelection);

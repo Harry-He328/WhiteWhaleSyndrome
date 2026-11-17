@@ -44,6 +44,8 @@ namespace WhiteWhale.Combat
                 else Controller.RestartBattle();
             }
             if (keys.enterKey.wasPressedThisFrame) eventRunner?.Confirm();
+            if (keys.digit1Key.wasPressedThisFrame || keys.numpad1Key.wasPressedThisFrame) eventRunner?.Choose(true);
+            if (keys.digit2Key.wasPressedThisFrame || keys.numpad2Key.wasPressedThisFrame) eventRunner?.Choose(false);
         }
 
         private static void DropRemovedItem(GameObject item)

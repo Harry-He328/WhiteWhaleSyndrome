@@ -32,13 +32,13 @@ namespace WhiteWhale.FlowStudio
         private static FlowExposedParameter Param(string key, string label) => new FlowExposedParameter(key, label);
         private static readonly Dictionary<string, FlowExposedParameter[]> fields = new Dictionary<string, FlowExposedParameter[]>
         {
-            ["spawn"] = new[] { Param(nameof(NodeParameters.prefabGuid), "预制体"),
-                Param(nameof(NodeParameters.placementOffset), "位置偏移（米）"), Param(nameof(NodeParameters.spawnScale), "缩放倍率") },
-            ["wait_travel"] = new[] { Param(nameof(NodeParameters.travelDistance), "累计位移（米）") },
-            ["wait_near"] = new[] { Param(nameof(NodeParameters.radius), "距离（米）") },
-            ["delay"] = new[] { Param(nameof(NodeParameters.seconds), "等待秒数") },
+            ["spawn"] = new[] { Param(nameof(NodeParameters.prefabGuid), "物件"),
+                Param(nameof(NodeParameters.placementOffset), "位置偏移（米）"), Param(nameof(NodeParameters.spawnScale), "缩放倍数") },
+            ["wait_travel"] = new[] { Param(nameof(NodeParameters.travelDistance), "累计移动距离（米）") },
+            ["wait_near"] = new[] { Param(nameof(NodeParameters.radius), "距离上限（米）") },
+            ["delay"] = new[] { Param(nameof(NodeParameters.seconds), "时长（秒）") },
             ["wait_confirmation"] = new[] { Param(nameof(NodeParameters.note), "提示内容") },
-            ["set_flag"] = new[] { Param(nameof(NodeParameters.value), "条件值") }
+            ["set_flag"] = new[] { Param(nameof(NodeParameters.value), "结果") }
         };
 
         public static IEnumerable<FlowExposedParameter> Publishable(StudioNode node)
