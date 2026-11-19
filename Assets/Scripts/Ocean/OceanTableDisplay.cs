@@ -14,6 +14,7 @@ public sealed class OceanTableDisplay : MonoBehaviour
     [SerializeField, Min(0.0001f)] private float displayScale = 0.05f;
     [SerializeField] private Vector2 oceanCenter;
     [SerializeField] private bool followPlayerShip;
+    [SerializeField] private bool drawOnTable = true;
     private Transform trackedShip;
     private readonly List<MeshFilter> filters = new List<MeshFilter>();
     private readonly Dictionary<Material, Material> materials = new Dictionary<Material, Material>();
@@ -24,6 +25,7 @@ public sealed class OceanTableDisplay : MonoBehaviour
     public Transform SourceRoot => sourceRoot;
     private Item highlightedItem;
     private Material highlightMaterial;
+    private MaterialPropertyBlock waterProperties;
 
     public Matrix4x4 DisplayMatrix
     {
@@ -122,7 +124,7 @@ public sealed class OceanTableDisplay : MonoBehaviour
     private void LateUpdate()
     {
         SubmittedMeshes = CulledMeshes = 0;
-        if (sourceRoot == null) return;
+        if (sourceRoot == null || !drawOnTable) return;
         if (followPlayerShip && trackedShip != null)
         {
             Vector3 center = sourceRoot.InverseTransformPoint(trackedShip.position);
@@ -174,6 +176,13 @@ public sealed class OceanTableDisplay : MonoBehaviour
                 }
                 var parameters = new RenderParams(material) { layer = gameObject.layer,
                     shadowCastingMode = ShadowCastingMode.On, receiveShadows = true };
+                if (material.shader.name == "WhiteWhale/Ocean Water")
+                {
+                    waterProperties ??= new MaterialPropertyBlock();
+                    renderer.GetPropertyBlock(waterProperties);
+                    parameters.matProps = waterProperties;
+                    parameters.shadowCastingMode = ShadowCastingMode.Off;
+                }
                 Graphics.RenderMesh(parameters, filter.sharedMesh, sub, matrix);
                 SubmittedMeshes++;
             }
